@@ -1,0 +1,55 @@
+Dashboard RT
+Menampilkan statistik khusus untuk RT yang bersangkutan: jumlah warga di RT, status dokumen, pengaduan, dan kegiatan di RT tersebut
+Melihat notifikasi terkait RT-nya sendiri
+Akses ke informasi warga yang berada di bawah RT-nya
+Notifikasi
+Menerima notifikasi tentang dokumen yang memerlukan verifikasi RT
+Notifikasi pengaduan dari warga di RT-nya
+Notifikasi kegiatan yang melibatkan RT-nya
+Notifikasi bantuan sosial yang perlu verifikasi
+Data Warga
+Melihat dan mengelola data warga khusus di RT-nya
+Memvalidasi data warga baru di RT-nya
+Memverifikasi perubahan data warga
+Tidak dapat mengakses data warga di RT lain
+Dapat mengekspor data warga di RT-nya untuk keperluan administrasi
+Administrasi Surat
+Menerima pengajuan surat dari warga di RT-nya
+Memberikan rekomendasi pada dokumen sebelum diteruskan ke RW
+Melakukan verifikasi awal untuk surat pengantar
+Tidak dapat menandatangani surat secara final (hak RW)
+Melihat status surat warga di RT-nya
+Agenda & Kegiatan
+Membuat kegiatan khusus untuk RT-nya
+Melihat kegiatan RW yang melibatkan RT-nya
+Mengelola RSVP kehadiran warga di RT-nya
+Mendokumentasikan kegiatan RT
+Membuat laporan kegiatan RT
+Pengaduan
+Menerima dan mengelola pengaduan dari warga di RT-nya
+Menindaklanjuti pengaduan sesuai wewenang RT
+Meneruskan pengaduan yang perlu ditangani RW
+Memberikan update status pengaduan kepada warga
+Melihat statistik pengaduan di RT-nya
+Bantuan Sosial
+Memverifikasi data calon penerima bantuan di RT-nya
+Membantu proses pendataan penerima bantuan
+Memvalidasi kebenaran data untuk program bantuan
+Membantu distribusi bantuan di tingkat RT
+Melaporkan penyaluran bantuan di RT-nya
+Forum Komunikasi
+Membuat pengumuman untuk warga di RT-nya
+Moderasi diskusi warga di RT-nya
+Menjawab pertanyaan warga terkait RT
+Membuat polling/voting untuk keputusan RT
+Melihat diskusi umum di tingkat RW
+Pengaturan Profil
+Mengelola data pribadi dan profil RT
+Mengubah password dan informasi kontak
+Mengunggah foto profil
+Mengatur preferensi notifikasi
+Pengaturan Sistem
+Akses terbatas ke pengaturan sistem
+Melihat log aktivitas di RT-nya
+Tidak dapat mengubah konfigurasi sistem secara keseluruhan
+Secara umum, RT memiliki akses dan wewenang yang terbatas pada lingkup RT-nya sendiri, berbeda dengan RW yang memiliki akses ke seluruh wilayah RW atau Admin yang memiliki akses penuh ke sistem.

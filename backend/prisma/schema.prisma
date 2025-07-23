@@ -1,0 +1,434 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and access control
+model User {
+  id                Int                @id @default(autoincrement())
+  email             String             @unique
+  password          String
+  name              String
+  role              Role               @default(WARGA)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  resident          Resident? // One-to-one relation with Resident
+  complaints        Complaint[] // User can create multiple complaints
+  events            Event[] // User can create multiple events
+  eventParticipants EventParticipant[] // User can participate in multiple events
+  forumPosts        ForumPost[] // User can create multiple forum posts
+  forumComments     ForumComment[] // User can create multiple forum comments
+  documents         Document[] // User can request multiple documents
+  notifications     Notification[] // User can receive multiple notifications
+  forumLikes        ForumLike[] // User can like multiple forum posts
+  commentLikes      ForumCommentLike[] // User can like multiple forum comments
+}
+
+enum Role {
+  ADMIN
+  RW
+  RT
+  WARGA
+}
+
+// Resident model for detailed personal information
+model Resident {
+  id                Int                         @id @default(autoincrement())
+  nik               String                      @unique // National Identity Number
+  noKK              String // Family Card Number
+  fullName          String
+  gender            Gender
+  birthPlace        String
+  birthDate         DateTime
+  address           String
+  rtNumber          String // RT Number (e.g., "001")
+  rwNumber          String // RW Number (e.g., "002")
+  religion          Religion
+  maritalStatus     MaritalStatus
+  occupation        String?
+  education         Education?
+  bpjsNumber        String?
+  phoneNumber       String?
+  email             String?
+  isVerified        Boolean                     @default(false)
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  domicileStatus    DomicileStatus              @default(TETAP)
+  vaccinationStatus VaccinationStatus?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  userId            Int                         @unique // Foreign key to User
+  user              User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId          Int? // Foreign key to Family
+  family            Family?                     @relation(fields: [familyId], references: [id])
+  familyRole        FamilyRole? // Role in the family
+  socialAssistances SocialAssistanceRecipient[] // Resident can receive multiple social assistances
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum Religion {
+  ISLAM
+  KRISTEN
+  KATOLIK
+  HINDU
+  BUDDHA
+  KONGHUCU
+  LAINNYA
+}
+
+enum MaritalStatus {
+  BELUM_KAWIN
+  KAWIN
+  CERAI_HIDUP
+  CERAI_MATI
+}
+
+enum Education {
+  TIDAK_SEKOLAH
+  SD
+  SMP
+  SMA
+  D1
+  D2
+  D3
+  S1
+  S2
+  S3
+}
+
+enum DomicileStatus {
+  TETAP
+  KONTRAK
+  KOST
+  LAINNYA
+}
+
+enum VaccinationStatus {
+  BELUM
+  DOSIS_1
+  DOSIS_2
+  BOOSTER_1
+  BOOSTER_2
+}
+
+enum FamilyRole {
+  KEPALA_KELUARGA
+  ISTRI
+  ANAK
+  LAINNYA
+}
+
+// Family model to group residents by family
+model Family {
+  id        Int        @id @default(autoincrement())
+  noKK      String     @unique // Family Card Number
+  address   String
+  rtNumber  String // RT Number
+  rwNumber  String // RW Number
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  members   Resident[] // One-to-many relation with Resident
+}
+
+// Document/Letter model for administrative purposes
+model Document {
+  id              Int            @id @default(autoincrement())
+  type            DocumentType
+  requesterId     Int // Foreign key to User
+  requester       User           @relation(fields: [requesterId], references: [id])
+  subject         String
+  description     String         @db.Text
+  attachments     String? // JSON array of file paths
+  status          DocumentStatus @default(DIAJUKAN)
+  rejectionReason String?        @db.Text
+  approvedBy      String?
+  approvedAt      DateTime?
+  signedBy        String?
+  signedAt        DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  notifications   Notification[] // One-to-many relation with Notification
+}
+
+enum DocumentType {
+  DOMISILI
+  PENGANTAR_SKCK
+  TIDAK_MAMPU
+  USAHA
+  KELAHIRAN
+  KEMATIAN
+  PINDAH
+  LAINNYA
+}
+
+enum DocumentStatus {
+  DIAJUKAN
+  DIPROSES
+  DITOLAK
+  DISETUJUI
+  DITANDATANGANI
+  SELESAI
+}
+
+// Complaint model for resident complaints and aspirations
+model Complaint {
+  id           Int               @id @default(autoincrement())
+  category     ComplaintCategory
+  title        String
+  description  String            @db.Text
+  location     String?
+  attachments  String? // JSON array of file paths
+  status       ComplaintStatus   @default(DITERIMA)
+  response     String?           @db.Text
+  respondedBy  String?
+  respondedAt  DateTime?
+  createdBy    Int // Foreign key to User
+  creator      User              @relation(fields: [createdBy], references: [id])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  notifications Notification[] // One-to-many relation with Notification
+}
+
+enum ComplaintCategory {
+  LINGKUNGAN
+  KEAMANAN
+  SOSIAL
+  INFRASTRUKTUR
+  ADMINISTRASI
+  LAINNYA
+}
+
+enum ComplaintStatus {
+  DITERIMA
+  DITINDAKLANJUTI
+  SELESAI
+  DITOLAK
+}
+
+// Event model for community activities
+model Event {
+  id           Int                @id @default(autoincrement())
+  title        String
+  description  String             @db.Text
+  location     String
+  startDate    DateTime
+  endDate      DateTime
+  category     EventCategory
+  isPublished  Boolean            @default(false)
+  targetRTs    String? // JSON array of RT numbers
+  createdBy    Int // Foreign key to User
+  creator      User               @relation(fields: [createdBy], references: [id])
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  participants EventParticipant[] // Many-to-many relation with User through EventParticipant
+  photos       EventPhoto[] // One-to-many relation with EventPhoto
+  notifications Notification[] // One-to-many relation with Notification
+}
+
+enum EventCategory {
+  KERJA_BAKTI
+  RAPAT
+  ARISAN
+  KEAGAMAAN
+  OLAHRAGA
+  PERAYAAN
+  LAINNYA
+}
+
+// EventParticipant model for RSVP functionality
+model EventParticipant {
+  id        Int        @id @default(autoincrement())
+  eventId   Int // Foreign key to Event
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    Int // Foreign key to User
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    RSVPStatus @default(AKAN_HADIR)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([eventId, userId]) // Each user can only RSVP once per event
+}
+
+enum RSVPStatus {
+  AKAN_HADIR
+  TIDAK_HADIR
+  HADIR
+}
+
+// EventPhoto model for event documentation
+model EventPhoto {
+  id        Int      @id @default(autoincrement())
+  eventId   Int // Foreign key to Event
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photoUrl  String
+  caption   String?
+  createdAt DateTime @default(now())
+}
+
+// SocialAssistance model for aid programs
+model SocialAssistance {
+  id           Int                         @id @default(autoincrement())
+  name         String
+  description  String                      @db.Text
+  startDate    DateTime
+  endDate      DateTime?
+  source       String // Government, NGO, etc.
+  type         SocialAssistanceType
+  status       SocialAssistanceStatus      @default(DISIAPKAN)
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  recipients   SocialAssistanceRecipient[] // Many-to-many relation with Resident through SocialAssistanceRecipient
+  notifications Notification[] // One-to-many relation with Notification
+}
+
+enum SocialAssistanceType {
+  BLT
+  SEMBAKO
+  KIS
+  PKH
+  LAINNYA
+}
+
+enum SocialAssistanceStatus {
+  DISIAPKAN
+  DISALURKAN
+  SELESAI
+}
+
+// SocialAssistanceRecipient model to track aid recipients
+model SocialAssistanceRecipient {
+  id                 Int              @id @default(autoincrement())
+  socialAssistanceId Int // Foreign key to SocialAssistance
+  socialAssistance   SocialAssistance @relation(fields: [socialAssistanceId], references: [id], onDelete: Cascade)
+  residentId         Int // Foreign key to Resident
+  resident           Resident         @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  receivedDate       DateTime?
+  isVerified         Boolean          @default(false)
+  verifiedBy         String?
+  verifiedAt         DateTime?
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([socialAssistanceId, residentId]) // Each resident can only receive a specific assistance once
+}
+
+// ForumPost model for digital communication
+model ForumPost {
+  id           Int            @id @default(autoincrement())
+  title        String
+  content      String         @db.Text
+  category     ForumCategory
+  isPinned     Boolean        @default(false)
+  isLocked     Boolean        @default(false)
+  authorId     Int // Foreign key to User
+  author       User           @relation(fields: [authorId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  comments     ForumComment[] // One-to-many relation with ForumComment
+  likes        ForumLike[] // One-to-many relation with ForumLike
+  notifications Notification[] // One-to-many relation with Notification
+}
+
+enum ForumCategory {
+  PENGUMUMAN
+  DISKUSI
+  POLLING
+  LAINNYA
+}
+
+// ForumComment model for post comments
+model ForumComment {
+  id        Int                @id @default(autoincrement())
+  postId    Int // Foreign key to ForumPost
+  post      ForumPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  Int // Foreign key to User
+  author    User               @relation(fields: [authorId], references: [id])
+  content   String             @db.Text
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  likes     ForumCommentLike[] // One-to-many relation with ForumCommentLike
+}
+
+// ForumLike model for post likes
+model ForumLike {
+  id        Int       @id @default(autoincrement())
+  postId    Int // Foreign key to ForumPost
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    Int // Foreign key to User
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([postId, userId]) // Each user can only like a post once
+}
+
+// ForumCommentLike model for comment likes
+model ForumCommentLike {
+  id        Int          @id @default(autoincrement())
+  commentId Int // Foreign key to ForumComment
+  comment   ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    Int // Foreign key to User
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([commentId, userId]) // Each user can only like a comment once
+}
+
+// Notification model for user notifications
+model Notification {
+  id                 Int              @id @default(autoincrement())
+  userId             Int // Foreign key to User
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               NotificationType
+  title              String
+  message            String
+  isRead             Boolean          @default(false)
+  priority           NotificationPriority @default(NORMAL)
+  
+  // Source references - only one of these should be set
+  eventId            Int?
+  event              Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  documentId         Int?
+  document           Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  complaintId        Int?
+  complaint          Complaint?       @relation(fields: [complaintId], references: [id], onDelete: SetNull)
+  forumPostId        Int?
+  forumPost          ForumPost?       @relation(fields: [forumPostId], references: [id], onDelete: SetNull)
+  socialAssistanceId Int?
+  socialAssistance   SocialAssistance? @relation(fields: [socialAssistanceId], references: [id], onDelete: SetNull)
+  
+  // Additional data
+  data               String?          @db.Text // JSON data for additional information
+  createdAt          DateTime         @default(now())
+  scheduledFor       DateTime?        // For scheduled notifications
+  expiresAt          DateTime?        // Expiration date for temporary notifications
+}
+
+enum NotificationType {
+  DOCUMENT
+  COMPLAINT
+  EVENT
+  SOCIAL_ASSISTANCE
+  FORUM
+  ANNOUNCEMENT
+  SYSTEM
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}

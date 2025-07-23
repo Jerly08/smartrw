@@ -1,0 +1,61 @@
+1. Inisialisasi Proyek & Struktur Folder
+Struktur:
+smart_rw/
+  backend/
+  frontend/
+  README.md
+Prompt Claude 3.7:
+> Buatkan struktur folder proyek Smart RW dengan dua folder utama: frontend (Next.js + Tailwind) dan backend (Express.js + Prisma + MySQL). Sertakan file README.md di root.
+2. Setup Frontend (Next.js + Tailwind CSS)
+Langkah:
+Inisialisasi Next.js di folder frontend
+Install Tailwind CSS
+Prompt Claude 3.7:
+> Di folder frontend, inisialisasi proyek Next.js (npx create-next-app@latest .) lalu setup Tailwind CSS sesuai dokumentasi resmi. Pastikan Tailwind sudah terintegrasi dan bisa digunakan di halaman utama.
+3. Setup Backend (Express.js + Prisma + MySQL)
+Langkah:
+Inisialisasi Node.js project di backend
+Install Express, Prisma, dan MySQL driver
+Setup Prisma, buat file .env untuk koneksi database
+Prompt Claude 3.7:
+> Di folder backend, inisialisasi Node.js project (npm init -y). Install Express, Prisma, dan MySQL2. Setup Prisma (npx prisma init), lalu atur koneksi database di .env (contoh: DATABASE_URL="mysql://user:password@localhost:3306/smartrw").
+4. Desain Database (Prisma Schema)
+Langkah:
+Buat model untuk User, Warga, RT, RW, Surat, Agenda, Pengaduan, Bantuan, Forum, dsb sesuai flow
+Prompt Claude 3.7:
+> Buatkan schema Prisma untuk aplikasi Smart RW, dengan model: User (role: warga, rt, rw, admin), Warga (biodata), RT, RW, Surat, Agenda, Pengaduan, Bantuan, Forum, dan relasinya. Pastikan ada field yang sesuai dengan kebutuhan flow aplikasi.
+5. Migrasi Database
+Langkah:
+Jalankan migrasi Prisma untuk membuat tabel di MySQL
+Prompt Claude 3.7:
+> Jalankan perintah Prisma migrate (npx prisma migrate dev --name init) untuk membuat tabel di database MySQL sesuai schema yang sudah dibuat.
+6. Buat API Backend (Express.js)
+Langkah:
+Buat endpoint untuk login, register, CRUD data warga, surat, agenda, pengaduan, bantuan, forum, dsb.
+Gunakan JWT untuk autentikasi.
+Prompt Claude 3.7:
+> Buatkan struktur folder Express.js yang rapi (routes, controllers, middlewares, models). Implementasikan endpoint login/register (JWT), CRUD data warga, surat, agenda, pengaduan, bantuan, forum. Gunakan Prisma untuk query ke database.
+7. Integrasi Frontend & Backend
+Langkah:
+Buat service di frontend untuk konsumsi API backend (menggunakan fetch/axios)
+Implementasi halaman login, dashboard, data warga, surat, agenda, pengaduan, bantuan, forum
+Prompt Claude 3.7:
+> Di Next.js, buat service untuk konsumsi API backend (misal: apiService.js). Implementasikan halaman login, dashboard, data warga, surat, agenda, pengaduan, bantuan, forum, sesuai flow. Gunakan Tailwind untuk styling.
+8. Manajemen Role & Akses
+Langkah:
+Implementasi role-based access di backend (middleware JWT)
+Di frontend, tampilkan menu/fitur sesuai role user
+Prompt Claude 3.7:
+> Tambahkan middleware di backend untuk validasi role user (warga, rt, rw, admin). Di frontend, tampilkan menu/fitur sesuai role user yang sedang login.
+9. Notifikasi Real-time (Opsional, Advanced)
+Langkah:
+Gunakan socket.io atau push notification untuk notifikasi real-time
+Prompt Claude 3.7:
+> Tambahkan fitur notifikasi real-time menggunakan socket.io di backend dan frontend. Notifikasi dikirim saat ada update surat, pengaduan, agenda, dsb.
+10. Testing & Deployment
+Langkah:
+Testing fitur utama
+Deploy backend (misal: Railway, Render, VPS)
+Deploy frontend (Vercel, Netlify, dsb)
+Prompt Claude 3.7:
+> Lakukan testing pada seluruh fitur utama. Deploy backend ke Railway/Render/VPS, dan frontend ke Vercel/Netlify. Pastikan environment variable sudah diatur dengan benar.

@@ -1,0 +1,153 @@
+Step 1: Project Setup Prompt
+"Please set up a project structure for a SmartRW application with a Next.js frontend (using Tailwind CSS) and Express.js backend (using Prisma with MySQL). Create the basic folder structure with separate directories for frontend and backend. Include necessary configuration files (package.json, next.config.js, tailwind.config.js, tsconfig.json, .env files) and initialize git with appropriate .gitignore."
+
+Step 2: Database Schema Design Prompt
+"Based on the SmartRW flow document, design a comprehensive Prisma schema for the MySQL database. Include models for Users (with different roles like admin, RW, RT, warga), Residents, Families, Documents/Letters, Complaints, Events, SocialAssistance, and ForumPosts. Define relationships between models and include appropriate fields as described in the flow document."
+
+Step 3: Backend API Setup Prompt
+"Create the Express.js backend structure with middleware setup (cors, body-parser, authentication), Prisma client initialization, and folder structure for routes, controllers, and services. Implement user authentication using JWT with different role permissions (admin, RW, RT, resident)."
+
+Step 4: User Management API Prompt
+"Implement the backend API endpoints for user management including registration, login, profile management, and user role management. Ensure proper validation and error handling. Create middleware to protect routes based on user roles."
+
+Step 5: Resident Data Management API Prompt
+"Implement the backend API for resident data management as described in the SmartRW flow document. Include endpoints for adding residents (individually or via import), updating resident information, validating resident data, and retrieving resident statistics for the dashboard. Implement role-based access controls where:
+- Admin/RW: Full access to all resident data
+- RT: Access limited to residents in their RT
+- Warga: Access limited to their own and family data"
+
+Step 6: Document/Letter Administration API Prompt
+"Create the backend API for document administration including letter requests, approval workflow, digital signatures, and document tracking. Implement endpoints for creating, updating, and retrieving letter requests with different status options. Implement role-based permissions where:
+- Admin/RW: Can approve, reject, and manage all documents
+- RT: Can recommend and verify documents from their RT
+- Warga: Can request and view status of their own documents"
+
+Step 7: Events and Activities API Prompt
+"Develop the backend API for managing community events and activities, including creating events, RSVP functionality, event documentation, and archiving completed events. Implement role-based access where:
+- Admin/RW: Can create and manage all events
+- RT: Can create and manage events for their RT
+- Warga: Can view and RSVP to events"
+
+Step 8: Complaints and Aspirations API Prompt
+"Implement the backend API for handling resident complaints and aspirations including submission, categorization, tracking, and resolution status updates. Implement role-based permissions where:
+- Admin/RW: Can manage and respond to all complaints
+- RT: Can manage complaints from their RT
+- Warga: Can submit and track their own complaints"
+
+Step 9: Social Assistance API Prompt
+"Create the API for managing social assistance programs including beneficiary verification, program management, distribution tracking, and reporting. Implement role-based access where:
+- Admin/RW: Can create programs and manage all beneficiaries
+- RT: Can verify beneficiaries in their RT
+- Warga: Can apply and check status of assistance"
+
+Step 10: Digital Forum API Prompt
+"Implement the API endpoints for the digital communication forum including posts, comments, likes, and announcements with appropriate permissions. Implement role-based access where:
+- Admin/RW: Can create announcements and moderate all content
+- RT: Can create posts and moderate content in their RT section
+- Warga: Can create regular posts, comment, and like"
+
+Step 11: Frontend Setup and Authentication Prompt
+"Set up the Next.js frontend with Tailwind CSS, including role-based layouts, navigation, and authentication components. Implement user login, registration, and profile management pages with proper form validation and error handling. Create a role-based access control system that restricts UI components and routes based on user roles (Admin, RW, RT, Warga)."
+
+Step 12: Dashboard Implementation Prompt
+"Create role-specific dashboard components showing appropriate statistics, notifications, and quick actions:
+1. Admin Dashboard: Complete system overview, user management, and system health metrics
+2. RW Dashboard: Total warga, RT aktif, surat masuk/keluar, pengaduan, kegiatan mendatang, bantuan aktif
+3. RT Dashboard: Data RT-nya sendiri (jumlah warga, surat, pengaduan, kegiatan di RT)
+4. Warga Dashboard: Notifikasi pribadi, status pengajuan surat, kegiatan mendatang, dan berita umum RW
+
+Implement proper navigation and quick action buttons relevant to each role's permissions."
+
+Step 13: Resident Management UI Prompt
+"Implement role-based UI for resident data management:
+1. Admin/RW: Forms for adding/editing all residents, data visualization, import/export functionality, and comprehensive search/filter
+2. RT: Forms for validating and updating residents in their RT, with limited editing capabilities
+3. Warga: Read-only view of personal and family data with ability to request updates
+
+Include proper permission checks and conditional rendering based on user roles."
+
+Step 14: Document Administration UI Prompt
+"Build role-specific UI components for document administration:
+1. Admin/RW: Complete document management dashboard, approval workflow, digital signature tools, and template management
+2. RT: Document recommendation and verification interface
+3. Warga: Request forms, status tracking, and document download
+
+Implement proper access controls and workflow states visible based on user role."
+
+Step 15: Events and Activities UI Prompt
+"Create role-based frontend components for community events:
+1. Admin/RW: Event creation forms, calendar management, attendance tracking, and reporting
+2. RT: Event management for RT-specific events and attendance tracking for RT members
+3. Warga: Calendar view, event details, and RSVP functionality
+
+Include notification systems and reminders appropriate for each role."
+
+Step 16: Complaints System UI Prompt
+"Develop role-based UI for the complaints and aspirations system:
+1. Admin/RW: Complete complaint management dashboard, response tools, and status updates
+2. RT: View and respond to complaints within their RT
+3. Warga: Submission forms, status tracking, and feedback options
+
+Implement proper privacy controls and escalation workflows based on user roles."
+
+Step 17: Social Assistance UI Prompt
+"Implement role-specific frontend components for social assistance programs:
+1. Admin/RW: Program creation, beneficiary management, distribution tracking, and reporting
+2. RT: Beneficiary verification interface and distribution assistance tools
+3. Warga: Application forms, eligibility checking, and status tracking
+
+Include data visualization and reporting tools appropriate for each role's needs."
+
+Step 18: Forum and Communication UI Prompt
+"Build role-based UI for the digital forum:
+1. Admin/RW: Post creation with announcement options, moderation tools, and analytics
+2. RT: Community management tools for RT-specific discussions
+3. Warga: Viewing, commenting, and participating in discussions
+
+Implement proper moderation tools and notification systems based on user roles."
+
+Step 19: Testing and Bug Fixing Prompt
+"Create comprehensive tests for both frontend and backend components, focusing on role-based access controls. Test user flows for each module and each role to ensure proper permissions are enforced. Verify that users can only access and modify data appropriate to their role. Fix any bugs or issues that arise during testing."
+
+Step 20: Deployment and Documentation Prompt
+"Prepare the application for deployment with environment configurations and documentation. Create role-specific user guides for different roles (administrators, RW/RT officers, and residents) explaining how to use each feature of the SmartRW system according to their access level and responsibilities."
+
+# Analisis Akses Modul Berdasarkan Role
+
+## 1. Admin
+- Akses penuh ke semua modul
+- Manajemen pengguna (termasuk pengaturan role)
+- Dashboard administratif dengan statistik lengkap
+- Pengaturan sistem dan konfigurasi
+- Validasi dan verifikasi data
+- Monitoring semua aktivitas
+
+## 2. Ketua RW
+- Dashboard RW dengan statistik lengkap (total warga, RT aktif, surat, pengaduan, kegiatan)
+- Manajemen Data Warga (akses penuh)
+- Administrasi & Surat-Menyurat (persetujuan dan penandatanganan)
+- Agenda & Kegiatan (pembuatan dan manajemen)
+- Pengaduan dan Aspirasi Warga (pengelolaan dan respons)
+- Layanan Bantuan Sosial (pengelolaan program dan penerima)
+- Forum Komunikasi Digital (pembuatan pengumuman dan moderasi)
+
+## 3. Ketua RT
+- Dashboard RT (data RT-nya sendiri)
+- Manajemen Data Warga (terbatas pada RT-nya)
+- Validasi data warga di RT-nya
+- Administrasi & Surat-Menyurat (rekomendasi)
+- Agenda & Kegiatan (untuk RT-nya)
+- Pengaduan dan Aspirasi Warga (untuk RT-nya)
+- Layanan Bantuan Sosial (verifikasi penerima di RT-nya)
+- Forum Komunikasi Digital (untuk RT-nya)
+
+## 4. Warga
+- Dashboard Warga (notifikasi pribadi dan berita umum)
+- Melihat data diri sendiri (read-only)
+- Pengajuan surat dan dokumen
+- Melihat dan RSVP kegiatan
+- Mengajukan pengaduan dan aspirasi
+- Melihat informasi bantuan sosial
+- Partisipasi dalam forum komunikasi (komentar, like)
+
+For each prompt, request Claude to implement the specific functionality step-by-step with code examples, configuration details, and explanations of the implementation choices.
