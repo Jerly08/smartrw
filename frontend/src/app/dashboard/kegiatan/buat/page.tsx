@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/lib/auth';
-import { eventApi } from '@/lib/api';
+import { eventApi, rtApi } from '@/lib/api';
 import { 
   eventFormSchemaWithDateValidation, 
   EventFormData, 
@@ -66,14 +66,13 @@ export default function CreateEventPage() {
 
   const fetchAvailableRTs = async () => {
     try {
-      // This would be replaced with an actual API call when implemented
-      // const response = await api.get('/rts');
-      // setAvailableRTs(response.data.rts);
-      
-      // For now, use mock data
-      setAvailableRTs(['001', '002', '003', '004', '005']);
+      const response = await rtApi.getAllRTs({ limit: 50 });
+      const rtNumbers = response.rts.map((rt: any) => rt.number);
+      setAvailableRTs(rtNumbers);
     } catch (error) {
       console.error('Error fetching RTs:', error);
+      // Fallback to mock data if API fails
+      setAvailableRTs(['001', '002', '003', '004', '005']);
     }
   };
 
@@ -86,6 +85,13 @@ export default function CreateEventPage() {
       if (isRT && user?.resident?.rtNumber) {
         data.targetRTs = [user.resident.rtNumber];
       }
+
+      // Debug logging
+      console.log('=== FRONTEND EVENT CREATION DEBUG ===');
+      console.log('Form data before API call:', data);
+      console.log('User info:', { id: user?.id, role: user?.role, rtNumber: user?.resident?.rtNumber });
+      console.log('Stringified data:', JSON.stringify(data, null, 2));
+      console.log('=== END FRONTEND DEBUG ===');
 
       await eventApi.createEvent(data);
       router.push('/dashboard/kegiatan');

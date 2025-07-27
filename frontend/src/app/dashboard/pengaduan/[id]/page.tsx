@@ -167,7 +167,7 @@ export default function ComplaintDetailPage({ params }: { params: { id: string }
               const pathParts = attachment.split('/');
               
               // Remove empty parts
-              const cleanPathParts = pathParts.filter(part => part !== '');
+              const cleanPathParts = pathParts.filter((part: string) => part !== '');
               
               // Get the directory and filename
               // The path from the backend is typically /uploads/complaints/filename

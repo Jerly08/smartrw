@@ -89,6 +89,7 @@ export default function DocumentManagementPage() {
         await documentApi.updateDocumentStatus(id, status);
       }
       fetchDocuments();
+      fetchStatistics();
     } catch (error) {
       console.error('Error updating document status:', error);
     }
@@ -100,6 +101,7 @@ export default function DocumentManagementPage() {
       try {
         await documentApi.rejectDocument(id, reason);
         fetchDocuments();
+        fetchStatistics();
       } catch (error) {
         console.error('Error rejecting document:', error);
       }
@@ -146,19 +148,19 @@ export default function DocumentManagementPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-sm text-gray-500">Total Surat</div>
-            <div className="text-2xl font-bold">{statistics.total}</div>
+            <div className="text-2xl font-bold">{statistics.total || 0}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-sm text-gray-500">Menunggu Persetujuan</div>
-            <div className="text-2xl font-bold">{statistics.diajukan}</div>
+            <div className="text-2xl font-bold">{statistics.pending || 0}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-sm text-gray-500">Dalam Proses</div>
-            <div className="text-2xl font-bold">{statistics.diproses + statistics.disetujui}</div>
+            <div className="text-2xl font-bold">{(statistics.diproses || 0) + (statistics.disetujui || 0) + (statistics.ditandatangani || 0)}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-sm text-gray-500">Selesai</div>
-            <div className="text-2xl font-bold">{statistics.selesai}</div>
+            <div className="text-2xl font-bold">{statistics.completed || 0}</div>
           </div>
         </div>
       )}

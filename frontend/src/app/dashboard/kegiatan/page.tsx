@@ -64,19 +64,19 @@ export default function EventsPage() {
     }
   };
 
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    if (e.target.name === 'isUpcoming') {
-      setFilters({
-        ...filters,
-        isUpcoming: e.target.checked,
-      });
-    } else {
-      setFilters({
-        ...filters,
-        [e.target.name]: e.target.value,
-      });
-    }
-  };
+const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+  if (e.target.name === 'isUpcoming' && 'checked' in e.target) {
+    setFilters({
+      ...filters,
+      isUpcoming: (e.target as HTMLInputElement).checked,
+    });
+  } else {
+    setFilters({
+      ...filters,
+      [e.target.name]: e.target.value,
+    });
+  }
+};
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

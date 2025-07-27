@@ -23,9 +23,9 @@ import {
   FiClock,
   FiLock,
   FiUnlock,
-  FiPinned,
   FiDownload,
-  FiAlertCircle
+  FiAlertCircle,
+  FiAnchor
 } from 'react-icons/fi';
 import Link from 'next/link';
 
@@ -344,7 +344,7 @@ export default function ForumPage() {
                         onClick={() => handleTogglePinPost(post.id, post.isPinned)}
                         className="inline-flex items-center px-3 py-1.5 border border-yellow-300 rounded-md text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
                       >
-                        <FiPinned className="mr-1" /> {post.isPinned ? 'Lepas Pin' : 'Pin'}
+                        <FiAnchor className="mr-1" /> {post.isPinned ? 'Lepas Pin' : 'Pin'}
                       </button>
                       
                       <button

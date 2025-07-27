@@ -222,6 +222,91 @@ export const importResidents = async (req: Request, res: Response, next: NextFun
   }
 };
 
+// Export residents data
+export const exportResidents = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Extract query parameters
+    const {
+      format = 'json',
+      search,
+      rtNumber,
+      rwNumber,
+      page,
+      limit
+    } = req.query;
+    
+    // Prepare parameters for the service
+    const params = {
+      search: search as string,
+      rtNumber: rtNumber as string,
+      rwNumber: rwNumber as string
+    };
+    
+    const currentUser = {
+      id: req.user.id,
+      role: req.user.role
+    };
+    
+    const residents = await residentService.exportResidents(params, currentUser);
+    
+    if (format === 'csv') {
+      // Set CSV headers
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="residents.csv"');
+      
+      // Convert to CSV format
+      const csvHeaders = ['ID', 'Full Name', 'NIK', 'KK Number', 'Gender', 'Birth Date', 'Phone', 'Email', 'Address', 'RT Number', 'RW Number', 'Religion', 'Marital Status', 'Occupation', 'Education', 'Emergency Contact', 'Blood Type', 'Is Verified', 'Created At'];
+      const csvRows = residents.map(resident => [
+        resident.id,
+        resident.fullName,
+        resident.nik,
+        resident.family?.noKK || '',
+        resident.gender,
+        resident.birthDate?.toISOString().split('T')[0] || '',
+        resident.phoneNumber || '',
+        resident.user?.email || '',
+        resident.address,
+        resident.rtNumber,
+        resident.rwNumber || '',
+        resident.religion || '',
+        resident.maritalStatus || '',
+        resident.occupation || '',
+        resident.education || '',
+        '', // Emergency contact not available in schema
+        '', // Blood type not available in schema
+        resident.isVerified ? 'Yes' : 'No',
+        resident.createdAt.toISOString().split('T')[0]
+      ]);
+      
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      
+      res.send(csvContent);
+    } else {
+      // Default JSON format
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename="residents.json"');
+      
+      res.status(200).json({
+        status: 'success',
+        message: `Successfully exported ${residents.length} residents`,
+        data: {
+          residents,
+          exportedAt: new Date().toISOString(),
+          totalCount: residents.length
+        },
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get resident statistics
 export const getResidentStatistics = async (req: Request, res: Response, next: NextFunction) => {
   try {

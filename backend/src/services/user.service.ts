@@ -166,6 +166,45 @@ export const linkUserToResident = async (userId: number, residentId: number) => 
   return updatedUser;
 };
 
+// Get RT list for RW user
+export const getRTListForRW = async (user: any) => {
+  // Get user's resident info to find their RW
+  const userWithResident = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: { resident: true },
+  });
+
+  if (!userWithResident || !userWithResident.resident) {
+    throw new ApiError('User is not linked to a resident', 400);
+  }
+
+  const rwNumber = userWithResident.resident.rwNumber;
+
+  // Get distinct RT numbers for the RW
+  const distinctRTs = await prisma.resident.findMany({
+    where: {
+      rwNumber: rwNumber,
+    },
+    select: {
+      rtNumber: true,
+    },
+    distinct: ['rtNumber'],
+    orderBy: {
+      rtNumber: 'asc',
+    },
+  });
+
+  // Filter out null/undefined RT numbers and transform to the expected format
+  const rtList = distinctRTs
+    .filter(rt => rt.rtNumber != null)
+    .map((rt, index) => ({
+      id: index + 1,
+      number: rt.rtNumber,
+    }));
+
+  return rtList;
+};
+
 // Delete user
 export const deleteUser = async (userId: number) => {
   // Check if user exists
@@ -183,4 +222,4 @@ export const deleteUser = async (userId: number) => {
   });
 
   return true;
-}; 
+};

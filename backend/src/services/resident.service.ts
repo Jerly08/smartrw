@@ -13,6 +13,12 @@ interface ResidentQueryParams {
   rwNumber?: string;
 }
 
+interface ExportQueryParams {
+  search?: string;
+  rtNumber?: string;
+  rwNumber?: string;
+}
+
 interface CurrentUser {
   id: number;
   role: Role;
@@ -425,6 +431,88 @@ export const importResidents = async (residents: Partial<Resident>[], currentUse
   }
   
   return results;
+};
+
+// Export residents to CSV
+export const exportResidents = async (params: ExportQueryParams, currentUser: CurrentUser) => {
+  const { search, rtNumber, rwNumber } = params;
+  
+  // Build where conditions
+  const whereConditions: any = {};
+  
+  if (search) {
+    whereConditions.OR = [
+      { fullName: { contains: search } },
+      { nik: { contains: search } },
+      { noKK: { contains: search } },
+    ];
+  }
+  
+  // Apply role-based filtering
+  if (currentUser.role === 'RT') {
+    // RT can only export residents in their RT
+    const rtResident = await prisma.resident.findFirst({
+      where: { userId: currentUser.id },
+    });
+    
+    if (!rtResident) {
+      throw new ApiError('RT profile not found', 404);
+    }
+    
+    whereConditions.rtNumber = rtResident.rtNumber;
+    whereConditions.rwNumber = rtResident.rwNumber;
+  } else if (currentUser.role === 'WARGA') {
+    // Warga can only export their own record and family members
+    const wargaResident = await prisma.resident.findFirst({
+      where: { userId: currentUser.id },
+      include: { family: true },
+    });
+    
+    if (!wargaResident) {
+      throw new ApiError('Resident profile not found', 404);
+    }
+    
+    // If warga has family, they can export family members, otherwise just themselves
+    if (wargaResident.familyId) {
+      whereConditions.OR = [
+        { id: wargaResident.id },
+        { familyId: wargaResident.familyId },
+      ];
+    } else {
+      whereConditions.id = wargaResident.id;
+    }
+  } else {
+    // Admin and RW can export all residents
+    // Apply optional filters if provided
+    if (rtNumber) {
+      whereConditions.rtNumber = rtNumber;
+    }
+    
+    if (rwNumber) {
+      whereConditions.rwNumber = rwNumber;
+    }
+  }
+  
+  // Get all residents without pagination for export
+  const residents = await prisma.resident.findMany({
+    where: whereConditions,
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+        },
+      },
+      family: true,
+    },
+    orderBy: {
+      fullName: 'asc',
+    },
+  });
+  
+  return residents;
 };
 
 // Get resident statistics

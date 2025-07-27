@@ -29,7 +29,7 @@ export default function ProfilePage() {
     }
   }, [user, setValue]);
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data: {name: string; email: string; phoneNumber?: string}) => {
     try {
       setIsSubmitting(true);
       await authApi.updateProfile(data);
@@ -47,7 +47,7 @@ export default function ProfilePage() {
   };
 
   // Format date safely
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | undefined) => {
     if (!dateString) return '-';
     
     try {

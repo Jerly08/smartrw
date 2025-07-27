@@ -115,6 +115,26 @@ export const linkUserToResident = async (req: Request, res: Response, next: Next
   }
 };
 
+// Get RT list for RW user
+export const getRTListForRW = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Only RW and Admin can access this endpoint
+    if (req.user?.role !== 'RW' && req.user?.role !== 'ADMIN') {
+      throw new ApiError('You do not have permission to access this resource', 403);
+    }
+    
+    const rtList = await userService.getRTListForRW(req.user);
+    
+    res.status(200).json({
+      status: 'success',
+      results: rtList.length,
+      data: { rtList },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Delete user (admin only)
 export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -133,4 +153,4 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
   } catch (error) {
     next(error);
   }
-}; 
+};

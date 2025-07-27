@@ -31,56 +31,48 @@ const eventBaseSchema = {
   }),
   category: z.enum(eventCategories),
   isPublished: z.boolean().optional().default(false),
-  targetRTs: z.string().optional(), // JSON array of RT numbers
+  targetRTs: z.array(z.string()).optional(), // Array of RT numbers
 };
 
 // Create event schema
-export const createEventSchema = z.object({
-  body: z.object(eventBaseSchema).refine((data) => {
-    const startDate = new Date(data.startDate);
-    const endDate = new Date(data.endDate);
-    return startDate <= endDate;
-  }, {
-    message: 'End date must be after or equal to start date',
-    path: ['endDate'],
-  }),
+export const createEventSchema = z.object(eventBaseSchema).refine((data) => {
+  const startDate = new Date(data.startDate);
+  const endDate = new Date(data.endDate);
+  return startDate <= endDate;
+}, {
+  message: 'End date must be after or equal to start date',
+  path: ['endDate'],
 });
 
 // Update event schema
 export const updateEventSchema = z.object({
-  body: z.object({
-    ...Object.fromEntries(
-      Object.entries(eventBaseSchema).map(([key, schema]) => [key, schema.optional()])
-    ),
-  }).refine(data => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided for update',
-  }).refine((data) => {
-    if (data.startDate && data.endDate) {
-      // Ensure both are strings before creating Date objects
-      const startDate = new Date(String(data.startDate));
-      const endDate = new Date(String(data.endDate));
-      return startDate <= endDate;
-    }
-    return true;
-  }, {
-    message: 'End date must be after or equal to start date',
-    path: ['endDate'],
-  }),
+  ...Object.fromEntries(
+    Object.entries(eventBaseSchema).map(([key, schema]) => [key, schema.optional()])
+  ),
+}).refine(data => Object.keys(data).length > 0, {
+  message: 'At least one field must be provided for update',
+}).refine((data) => {
+  if (data.startDate && data.endDate) {
+    // Ensure both are strings before creating Date objects
+    const startDate = new Date(String(data.startDate));
+    const endDate = new Date(String(data.endDate));
+    return startDate <= endDate;
+  }
+  return true;
+}, {
+  message: 'End date must be after or equal to start date',
+  path: ['endDate'],
 });
 
 // RSVP schema
 export const rsvpEventSchema = z.object({
-  body: z.object({
-    status: z.enum(rsvpStatuses),
-  }),
+  status: z.enum(rsvpStatuses),
 });
 
 // Upload event photo schema
 export const uploadEventPhotoSchema = z.object({
-  body: z.object({
-    photoUrl: z.string().url('Photo URL must be a valid URL'),
-    caption: z.string().optional(),
-  }),
+  photoUrl: z.string().url('Photo URL must be a valid URL'),
+  caption: z.string().optional(),
 });
 
 // Search events schema

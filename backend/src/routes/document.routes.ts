@@ -37,6 +37,14 @@ router.get(
   documentController.downloadAttachment
 );
 
+// Add route to download completed document
+router.get(
+  '/:id/download',
+  authenticate,
+  checkDocumentAccess,
+  documentController.downloadDocument
+);
+
 // Create document - all authenticated users can create documents
 router.post(
   '/',

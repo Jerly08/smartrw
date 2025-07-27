@@ -31,6 +31,13 @@ router.post(
   residentController.importResidents
 );
 
+router.get(
+  '/export',
+  authenticate,
+  authorize(['RT', 'RW', 'ADMIN']),
+  residentController.exportResidents
+);
+
 router.put(
   '/:id',
   authenticate,

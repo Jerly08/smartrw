@@ -1,0 +1,41 @@
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.validateRequest = void 0;
+const zod_1 = require("zod");
+// Middleware to validate request body against a Zod schema
+const validateRequest = (schema) => {
+    return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            // Validate request against schema
+            // The schema expects { body: {...} } structure, so we wrap req.body
+            yield schema.parseAsync({ body: req.body });
+            // If validation passes, continue
+            return next();
+        }
+        catch (error) {
+            // If validation fails, return error response
+            if (error instanceof zod_1.ZodError) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Validation failed',
+                    errors: error.errors.map((e) => ({
+                        path: e.path.join('.'),
+                        message: e.message,
+                    })),
+                });
+            }
+            // For other errors, pass to error handler
+            return next(error);
+        }
+    });
+};
+exports.validateRequest = validateRequest;

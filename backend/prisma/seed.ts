@@ -10,6 +10,26 @@ async function main() {
   await prisma.resident.deleteMany();
   await prisma.user.deleteMany();
   await prisma.family.deleteMany();
+  await prisma.rT.deleteMany();
+
+  // Create RT entries first
+  const rt1 = await prisma.rT.create({
+    data: {
+      number: '001',
+      chairperson: 'Ketua RT 001',
+      email: 'rt001@smartrw.com',
+      isActive: true,
+    }
+  });
+
+  const rt2 = await prisma.rT.create({
+    data: {
+      number: '002',
+      chairperson: 'Ketua RT 002',
+      email: 'rt002@smartrw.com',
+      isActive: true,
+    }
+  });
 
   // Create test families
   const family1 = await prisma.family.create({
@@ -18,6 +38,7 @@ async function main() {
       address: 'Jl. Merdeka No. 123, RT 001/RW 002',
       rtNumber: '001',
       rwNumber: '002',
+      rtId: rt1.id,
     }
   });
 
@@ -27,6 +48,7 @@ async function main() {
       address: 'Jl. Merdeka No. 456, RT 001/RW 002',
       rtNumber: '001',
       rwNumber: '002',
+      rtId: rt1.id,
     }
   });
 
@@ -36,6 +58,7 @@ async function main() {
       address: 'Jl. Pahlawan No. 789, RT 002/RW 002',
       rtNumber: '002',
       rwNumber: '002',
+      rtId: rt2.id,
     }
   });
 
@@ -123,8 +146,15 @@ async function main() {
           familyId: family2.id,
           familyRole: 'KEPALA_KELUARGA',
         }
+      },
+      rt: {
+        connect: { id: rt1.id }
       }
     }
+  });
+  await prisma.rT.update({
+    where: { id: rt1.id },
+    data: { userId: rt1User.id }
   });
   console.log('Created RT 001 user:', rt1User.email);
 
@@ -159,8 +189,15 @@ async function main() {
           familyId: family3.id,
           familyRole: 'KEPALA_KELUARGA',
         }
+      },
+      rt: {
+        connect: { id: rt2.id }
       }
     }
+  });
+  await prisma.rT.update({
+    where: { id: rt2.id },
+    data: { userId: rt2User.id }
   });
   console.log('Created RT 002 user:', rt2User.email);
 

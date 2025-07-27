@@ -20,6 +20,7 @@ model User {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   resident          Resident? // One-to-one relation with Resident
+  rt                RT? // One-to-one relation with RT (for RT users)
   complaints        Complaint[] // User can create multiple complaints
   events            Event[] // User can create multiple events
   eventParticipants EventParticipant[] // User can participate in multiple events
@@ -69,6 +70,8 @@ model Resident {
   familyId          Int? // Foreign key to Family
   family            Family?                     @relation(fields: [familyId], references: [id])
   familyRole        FamilyRole? // Role in the family
+  rtId              Int? // Foreign key to RT
+  rt                RT?                         @relation(fields: [rtId], references: [id])
   socialAssistances SocialAssistanceRecipient[] // Resident can receive multiple social assistances
 }
 
@@ -130,12 +133,33 @@ enum FamilyRole {
 }
 
 // Family model to group residents by family
+// RT model for managing RT areas
+model RT {
+  id          Int        @id @default(autoincrement())
+  number      String     @unique // RT Number (e.g., "001")
+  name        String? // Optional RT name
+  description String?    @db.Text
+  address     String? // RT area address
+  chairperson String? // Name of RT chairperson
+  phoneNumber String? // Contact number
+  email       String? // Contact email
+  isActive    Boolean    @default(true)
+  userId      Int?       @unique // Foreign key to User (RT account)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  residents   Resident[] // One-to-many relation with Resident
+  families    Family[]   // One-to-many relation with Family
+}
+
 model Family {
   id        Int        @id @default(autoincrement())
   noKK      String     @unique // Family Card Number
   address   String
   rtNumber  String // RT Number
   rwNumber  String // RW Number
+  rtId      Int? // Foreign key to RT
+  rt        RT?        @relation(fields: [rtId], references: [id])
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   members   Resident[] // One-to-many relation with Resident

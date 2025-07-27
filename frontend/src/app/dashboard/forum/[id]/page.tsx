@@ -23,7 +23,7 @@ import {
   FiClock,
   FiLock,
   FiUnlock,
-  FiPinned,
+  FiAnchor,
   FiArrowLeft,
   FiSend,
   FiAlertCircle,
@@ -147,7 +147,7 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
 
   const handleToggleLikePost = async () => {
     try {
-      await forumApi.toggleLikePost(postId);
+      await forumApi.togglePostLike(postId);
       fetchPost();
     } catch (error) {
       console.error('Error toggling like status:', error);
@@ -157,7 +157,7 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
 
   const handleToggleLikeComment = async (commentId: number) => {
     try {
-      await forumApi.toggleLikeComment(postId, commentId);
+      await forumApi.toggleCommentLike(postId, commentId);
       fetchComments();
     } catch (error) {
       console.error('Error toggling comment like status:', error);
@@ -375,7 +375,7 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
                   onClick={handleTogglePinPost}
                   className="inline-flex items-center px-3 py-1.5 border border-yellow-300 rounded-md text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
                 >
-                  <FiPinned className="mr-1" /> {post.isPinned ? 'Lepas Pin' : 'Pin'}
+                  <FiAnchor className="mr-1" /> {post.isPinned ? 'Lepas Pin' : 'Pin'}
                 </button>
                 
                 <button

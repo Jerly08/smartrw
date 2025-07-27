@@ -59,6 +59,7 @@ export default function SocialAssistancePage() {
   const fetchPrograms = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const params: any = { ...filters };
       
       // For RT, only show programs targeting their RT
@@ -67,10 +68,14 @@ export default function SocialAssistancePage() {
       }
       
       const response = await socialAssistanceApi.getAllSocialAssistance(params);
-      setPrograms(response.socialAssistance);
+      
+      // Ensure we always have an array
+      const programsData = response?.socialAssistance || response?.data?.socialAssistance || response || [];
+      setPrograms(Array.isArray(programsData) ? programsData : []);
     } catch (error) {
       console.error('Error fetching social assistance programs:', error);
       setError('Gagal memuat data bantuan sosial');
+      setPrograms([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -163,6 +168,20 @@ export default function SocialAssistancePage() {
   const canManageProgram = () => {
     return isAdmin || isRW;
   };
+
+  // Show loading if auth is still loading
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Redirect if user is not authorized
+  if (!user || isWarga) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -264,7 +283,7 @@ export default function SocialAssistancePage() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
-        ) : programs.length === 0 ? (
+        ) : (!programs || programs.length === 0) ? (
           <div className="bg-white p-8 rounded-lg shadow text-center text-gray-500">
             Tidak ada program bantuan yang ditemukan
           </div>

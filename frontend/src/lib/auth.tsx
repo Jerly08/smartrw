@@ -27,12 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Gunakan mock user untuk development
-    const mockUser = getMockUser();
-    setUser(mockUser);
-    setLoading(false);
-    
-    /* Kode asli untuk produksi
     const token = localStorage.getItem('token');
     console.log('Initial token check:', token ? 'Token exists' : 'No token');
     
@@ -56,7 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchUser();
-    */
   }, []);
 
   // Login function
@@ -64,12 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      // Gunakan mock user untuk development
-      const mockUser = getMockUser();
-      setUser(mockUser);
-      router.replace('/dashboard');
-      
-      /* Kode asli untuk produksi
       console.log('Attempting login for:', email);
       const { user, token } = await authApi.login({ email, password });
       console.log('Login successful, user:', user);
@@ -91,7 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fallback ke router jika window tidak tersedia
         router.replace('/dashboard');
       }
-      */
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.response?.data?.message || 'Login gagal. Silakan coba lagi.');
@@ -105,12 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      // Gunakan mock user untuk development
-      const mockUser = getMockUser();
-      setUser(mockUser);
-      router.replace('/dashboard');
-      
-      /* Kode asli untuk produksi
       console.log('Attempting registration for:', email);
       const { user, token } = await authApi.register({ name, email, password, confirmPassword: password });
       console.log('Registration successful, user:', user);
@@ -132,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fallback ke router jika window tidak tersedia
         router.replace('/dashboard');
       }
-      */
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.response?.data?.message || 'Registrasi gagal. Silakan coba lagi.');
@@ -143,10 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Logout function
   const logout = () => {
-    setUser(null);
-    router.replace('/login');
-    
-    /* Kode asli untuk produksi
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       console.log('Token removed from localStorage');
@@ -158,7 +133,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       router.replace('/login');
     }
-    */
   };
 
   const contextValue = { user, loading, error, login, register, logout };

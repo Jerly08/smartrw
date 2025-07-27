@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Resident as FullResident } from './types/resident';
 
 // User role enum
 export enum Role {
@@ -16,10 +17,10 @@ export interface User {
   role: Role;
   createdAt: string;
   updatedAt: string;
-  resident?: Resident;
+  resident?: FullResident;
 }
 
-// Resident interface (simplified)
+// Resident interface (simplified) - for backward compatibility
 export interface Resident {
   id: number;
   nik: string;
@@ -36,7 +37,7 @@ export interface AuthResponse {
 // Login form schema
 export const loginSchema = z.object({
   email: z.string().email('Email tidak valid'),
-  password: z.string().min(6, 'Password minimal 6 karakter'),
+  password: z.string().min(1, 'Password wajib diisi'),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;

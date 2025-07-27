@@ -31,7 +31,7 @@ import { RTDashboardStats, PendingVerification, PendingDocument, UpcomingEvent }
 
 // Create axios instance
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -102,6 +102,90 @@ export const authApi = {
       message: response.data.message
     };
   },
+};
+
+// RT API functions
+export const rtApi = {
+  // Get all RTs
+  getAllRTs: async (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    includeInactive?: boolean;
+  } = {}) => {
+    const response = await api.get('/rt', { params });
+    return response.data.data;
+  },
+
+  // Get RT by ID
+  getRTById: async (id: number) => {
+    const response = await api.get(`/rt/${id}`);
+    return response.data.data.rt;
+  },
+
+  // Get RT by number
+  getRTByNumber: async (number: string) => {
+    const response = await api.get(`/rt/number/${number}`);
+    return response.data.data.rt;
+  },
+
+  // Create new RT
+  createRT: async (data: {
+    number: string;
+    name?: string;
+    description?: string;
+    address?: string;
+    chairperson?: string;
+    phoneNumber?: string;
+    email?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await api.post('/rt', data);
+    return response.data.data; // Return the complete data object including rt and credentials
+  },
+
+  // Update RT
+  updateRT: async (id: number, data: {
+    number?: string;
+    name?: string;
+    description?: string;
+    address?: string;
+    chairperson?: string;
+    phoneNumber?: string;
+    email?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await api.put(`/rt/${id}`, data);
+    return response.data.data.rt;
+  },
+
+  // Delete RT
+  deleteRT: async (id: number) => {
+    const response = await api.delete(`/rt/${id}`);
+    return response.data;
+  },
+
+  // Get RT statistics
+  getRTStatistics: async (id: number) => {
+    const response = await api.get(`/rt/${id}/statistics`);
+    return response.data.data.statistics;
+  },
+
+  // Get residents in RT
+  getRTResidents: async (id: number, params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  } = {}) => {
+    const response = await api.get(`/rt/${id}/residents`, { params });
+    return response.data.data;
+  },
+};
+
+// Legacy function for backward compatibility
+export const getRTs = async () => {
+  const result = await rtApi.getAllRTs({ limit: 50 });
+  return result.rts || [];
 };
 
 // Resident API functions
@@ -181,8 +265,8 @@ export const residentApi = {
 
   // Get family members
   getFamilyMembers: async (familyId: number) => {
-    const response = await api.get(`/families/${familyId}/members`);
-    return response.data.data.members as Resident[];
+    const response = await api.get(`/families/${familyId}`);
+    return response.data.data.family.members as Resident[];
   },
 };
 
@@ -239,6 +323,30 @@ export const documentApi = {
     return response.data.data.document as Document;
   },
 
+  // Approve document
+  approveDocument: async (id: number, notes?: string) => {
+    const response = await api.post(`/documents/${id}/process`, { status: 'approved', notes });
+    return response.data.data.document as Document;
+  },
+
+  // Reject document
+  rejectDocument: async (id: number, notes?: string) => {
+    const response = await api.post(`/documents/${id}/process`, { status: 'rejected', notes });
+    return response.data.data.document as Document;
+  },
+
+  // Sign document
+  signDocument: async (id: number, notes?: string) => {
+    const response = await api.post(`/documents/${id}/process`, { status: 'signed', notes });
+    return response.data.data.document as Document;
+  },
+
+  // Complete document
+  completeDocument: async (id: number, notes?: string) => {
+    const response = await api.post(`/documents/${id}/process`, { status: 'completed', notes });
+    return response.data.data.document as Document;
+  },
+
   // Delete document
   deleteDocument: async (id: number) => {
     const response = await api.delete(`/documents/${id}`);
@@ -266,7 +374,25 @@ export const documentApi = {
   // Get document statistics
   getDocumentStatistics: async () => {
     const response = await api.get('/documents/statistics');
-    return response.data.data.statistics;
+    return response.data.data;
+  },
+
+  // Download document (completed documents)
+  downloadDocument: async (id: number) => {
+    const response = await api.get(`/documents/${id}/download`, {
+      responseType: 'blob'
+    });
+    
+    // Create file download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `surat-${id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    
+    return true;
   },
 };
 
@@ -333,6 +459,36 @@ export const eventApi = {
     });
     
     return response.data.data.photos;
+  },
+
+  // Publish event
+  publishEvent: async (id: number) => {
+    const response = await api.patch(`/events/${id}/publish`);
+    return response.data.data.event as Event;
+  },
+
+  // Unpublish event
+  unpublishEvent: async (id: number) => {
+    const response = await api.patch(`/events/${id}/unpublish`);
+    return response.data.data.event as Event;
+  },
+
+  // Export participants to CSV
+  exportParticipants: async (id: number) => {
+    const response = await api.get(`/events/${id}/participants/export`, {
+      responseType: 'blob'
+    });
+    
+    // Create file download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `kegiatan-${id}-peserta.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    
+    return true;
   },
 
   // Get event statistics
@@ -664,10 +820,28 @@ export const forumApi = {
     return response.data.data;
   },
 
+  // Toggle pin/unpin a post
+  togglePinPost: async (postId: number, isPinned: boolean) => {
+    const response = await api.patch(`/forum/${postId}/pin`, { isPinned });
+    return response.data.data;
+  },
+
+  // Toggle lock/unlock a post
+  toggleLockPost: async (postId: number, isLocked: boolean) => {
+    const response = await api.patch(`/forum/${postId}/lock`, { isLocked });
+    return response.data.data;
+  },
+
   // Like/unlike a comment
   toggleCommentLike: async (postId: number, commentId: number) => {
     const response = await api.post(`/forum/${postId}/comments/${commentId}/like`);
     return response.data.data;
+  },
+
+  // Delete comment
+  deleteComment: async (postId: number, commentId: number) => {
+    const response = await api.delete(`/forum/${postId}/comments/${commentId}`);
+    return response.data;
   },
 
   // Get forum statistics
@@ -1019,4 +1193,7 @@ export const dashboardApi = {
   },
 };
 
-export default api; 
+// Export the axios instance for direct use
+export { api };
+
+export default api;

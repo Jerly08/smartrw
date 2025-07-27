@@ -16,6 +16,7 @@ import complaintRoutes from './routes/complaint.routes';
 import socialAssistanceRoutes from './routes/socialAssistance.routes';
 import forumRoutes from './routes/forum.routes';
 import notificationRoutes from './routes/notification.routes';
+import rtRoutes from './routes/rt.routes';
 
 // Middleware
 import { errorHandler, notFound } from './middleware/error.middleware';
@@ -50,6 +51,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/social-assistance', socialAssistanceRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/rt', rtRoutes);
 
 // Error handling middleware
 app.use(notFound);

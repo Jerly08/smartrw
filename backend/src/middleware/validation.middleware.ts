@@ -1,16 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { ZodTypeAny, ZodError } from 'zod';
 
 // Middleware to validate request body against a Zod schema
-export const validateRequest = (schema: AnyZodObject) => {
+export const validateRequest = (schema: ZodTypeAny) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate request against schema
-      await schema.parseAsync({
-        body: req.body,
-        query: req.query,
-        params: req.params,
-      });
+      // Validate req.body directly against the schema
+      await schema.parseAsync(req.body);
       
       // If validation passes, continue
       return next();
@@ -31,4 +28,4 @@ export const validateRequest = (schema: AnyZodObject) => {
       return next(error);
     }
   };
-}; 
+};

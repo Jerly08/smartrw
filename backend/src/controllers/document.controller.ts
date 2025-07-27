@@ -291,33 +291,71 @@ export const getDocumentStatistics = async (req: Request, res: Response, next: N
       throw new ApiError('User not authenticated', 401);
     }
     
+    // Build where condition based on user role
+    let whereCondition = {};
+    
+    // For RT, only show documents from their RT
+    if (req.user.role === 'RT') {
+      // Get RT user's resident data to determine their RT number
+      const rtUserResident = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          resident: true
+        }
+      });
+      
+      if (rtUserResident?.resident?.rtNumber) {
+        whereCondition = {
+          requester: {
+            resident: {
+              rtNumber: rtUserResident.resident.rtNumber
+            }
+          }
+        };
+      }
+    }
+    
     // Get statistics based on user role
     const statistics = {
       total: 0,
       pending: 0,
       approved: 0,
       rejected: 0,
-      completed: 0
+      completed: 0,
+      diajukan: 0,
+      diproses: 0,
+      disetujui: 0,
+      ditandatangani: 0,
+      selesai: 0,
+      ditolak: 0
     };
     
-    // For now, we'll just query the database directly
-    const total = await prisma.document.count();
-    const pending = await prisma.document.count({ where: { status: 'DIAJUKAN' } });
-    const approved = await prisma.document.count({ where: { status: 'DISETUJUI' } });
-    const rejected = await prisma.document.count({ where: { status: 'DITOLAK' } });
-    const completed = await prisma.document.count({ where: { status: 'SELESAI' } });
+    // Count documents with proper filtering
+    const total = await prisma.document.count({ where: whereCondition });
+    const diajukan = await prisma.document.count({ where: { ...whereCondition, status: 'DIAJUKAN' } });
+    const diproses = await prisma.document.count({ where: { ...whereCondition, status: 'DIPROSES' } });
+    const disetujui = await prisma.document.count({ where: { ...whereCondition, status: 'DISETUJUI' } });
+    const ditandatangani = await prisma.document.count({ where: { ...whereCondition, status: 'DITANDATANGANI' } });
+    const selesai = await prisma.document.count({ where: { ...whereCondition, status: 'SELESAI' } });
+    const ditolak = await prisma.document.count({ where: { ...whereCondition, status: 'DITOLAK' } });
     
     statistics.total = total;
-    statistics.pending = pending;
-    statistics.approved = approved;
-    statistics.rejected = rejected;
-    statistics.completed = completed;
+    statistics.pending = diajukan; // Menunggu persetujuan
+    statistics.approved = disetujui + ditandatangani; // Yang sudah disetujui + ditandatangani
+    statistics.rejected = ditolak;
+    statistics.completed = selesai;
+    
+    // Also include individual status counts for more detailed statistics
+    statistics.diajukan = diajukan;
+    statistics.diproses = diproses;
+    statistics.disetujui = disetujui;
+    statistics.ditandatangani = ditandatangani;
+    statistics.selesai = selesai;
+    statistics.ditolak = ditolak;
     
     res.status(200).json({
       status: 'success',
-      data: {
-        statistics,
-      },
+      data: statistics,
     });
   } catch (error) {
     next(error);
@@ -383,6 +421,60 @@ export const downloadAttachment = async (req: Request, res: Response, next: Next
     
     // Send file
     res.download(filePath, filename);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Download completed document
+export const downloadDocument = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const documentId = parseInt(req.params.id);
+    
+    if (isNaN(documentId)) {
+      throw new ApiError('Invalid document ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Get document to check permissions and status
+    const document = await documentService.getDocumentById(documentId);
+    
+    // Check if document is completed
+    if (document.status !== 'SELESAI') {
+      throw new ApiError('Document is not yet completed', 400);
+    }
+    
+    // Check if user is authorized to download
+    const isAuthorized = 
+      document.requesterId === req.user.id || 
+      ['ADMIN', 'RW', 'RT'].includes(req.user.role);
+    
+    if (!isAuthorized) {
+      throw new ApiError('You are not authorized to download this document', 403);
+    }
+    
+    // For now, we'll create a simple PDF response
+    // In a real implementation, you would generate a proper PDF document
+    const pdfContent = `
+      SURAT ${document.type}
+      
+      Subjek: ${document.subject}
+      Deskripsi: ${document.description}
+      Status: ${document.status}
+      Disetujui oleh: ${document.approvedBy || '-'}
+      Ditandatangani oleh: ${document.signedBy || '-'}
+      Tanggal selesai: ${document.completedAt ? new Date(document.completedAt).toLocaleDateString('id-ID') : '-'}
+    `;
+    
+    // Set response headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="surat-${documentId}.pdf"`);
+    
+    // For now, send as text (in production, use a PDF library like pdfkit or puppeteer)
+    res.send(pdfContent);
   } catch (error) {
     next(error);
   }

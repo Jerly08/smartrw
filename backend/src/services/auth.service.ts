@@ -1,4 +1,4 @@
-import { PrismaClient, User, Role } from '@prisma/client';
+import { PrismaClient, User, $Enums } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../middleware/error.middleware';
@@ -10,7 +10,7 @@ interface RegisterUserInput {
   email: string;
   password: string;
   name: string;
-  role?: Role;
+  role?: $Enums.Role;
 }
 
 // Interface for profile update data

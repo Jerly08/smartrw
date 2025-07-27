@@ -18,6 +18,11 @@ export const errorHandler = (
   // Log error for debugging
   console.error(`[ERROR] ${err.message}`);
   console.error(err.stack);
+  
+  // Add detailed logging for validation errors
+  if (statusCode === 400 && err.errors) {
+    console.error(`[VALIDATION ERROR DETAILS]`, JSON.stringify(err.errors, null, 2));
+  }
 
   res.status(statusCode).json({
     status: 'error',
