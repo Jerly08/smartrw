@@ -58,7 +58,7 @@ export const documentFormSchema = z.object({
   type: z.nativeEnum(DocumentType),
   subject: z.string().min(5, 'Subjek minimal 5 karakter'),
   description: z.string().min(10, 'Deskripsi minimal 10 karakter'),
-  attachments: z.array(z.instanceof(File)).optional(),
+  attachments: z.array(z.any()).optional(),
 });
 
 export type DocumentFormData = z.infer<typeof documentFormSchema>;

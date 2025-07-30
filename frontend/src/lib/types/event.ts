@@ -114,7 +114,7 @@ export type RSVPFormData = z.infer<typeof rsvpFormSchema>;
 
 // Photo upload form schema
 export const photoUploadSchema = z.object({
-  photos: z.array(z.instanceof(File)).min(1, 'Minimal 1 foto harus diunggah'),
+  photos: z.array(z.any()).min(1, 'Minimal 1 foto harus diunggah'),
   captions: z.array(z.string().optional()).optional(),
 });
 

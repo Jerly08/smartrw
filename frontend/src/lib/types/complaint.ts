@@ -45,7 +45,7 @@ export const complaintFormSchema = z.object({
   }),
   description: z.string().min(10, 'Deskripsi minimal 10 karakter'),
   location: z.string().optional(),
-  attachments: z.array(z.instanceof(File)).optional(),
+  attachments: z.array(z.any()).optional(),
 });
 
 export type ComplaintFormData = z.infer<typeof complaintFormSchema>;
