@@ -7,38 +7,28 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seeding...');
   
-  // Delete existing data in the correct order to avoid foreign key constraints
-  console.log('Deleting existing data...');
+  console.log('Deleting existing data in correct dependency order...');
   
-  // Use try-catch to handle tables that might not exist yet
-  const deleteTable = async (modelName, deleteFn) => {
-    try {
-      await deleteFn();
-      console.log(`✓ Cleared ${modelName} table`);
-    } catch (error) {
-      console.log(`⚠ ${modelName} table not found or already empty`);
-    }
-  };
+  // Models that depend on others are deleted first
+  await prisma.notification.deleteMany().catch(e => console.log('Skipping Notification...'));
+  await prisma.eventParticipant.deleteMany().catch(e => console.log('Skipping EventParticipant...'));
+  await prisma.eventPhoto.deleteMany().catch(e => console.log('Skipping EventPhoto...'));
+  await prisma.forumCommentLike.deleteMany().catch(e => console.log('Skipping ForumCommentLike...'));
+  await prisma.forumLike.deleteMany().catch(e => console.log('Skipping ForumLike...'));
+  await prisma.forumComment.deleteMany().catch(e => console.log('Skipping ForumComment...'));
+  await prisma.socialAssistanceRecipient.deleteMany().catch(e => console.log('Skipping SocialAssistanceRecipient...'));
+  
+  // Models that depend on User/Resident
+  await prisma.document.deleteMany().catch(e => console.log('Skipping Document...'));
+  await prisma.complaint.deleteMany().catch(e => console.log('Skipping Complaint...'));
+  await prisma.forumPost.deleteMany().catch(e => console.log('Skipping ForumPost...'));
+  await prisma.event.deleteMany().catch(e => console.log('Skipping Event...'));
 
-  // First delete records from models that have foreign keys to User or Resident
-  await deleteTable('Notification', () => prisma.notification.deleteMany({}));
-  await deleteTable('EventPhoto', () => prisma.eventPhoto.deleteMany({}));
-  await deleteTable('EventParticipant', () => prisma.eventParticipant.deleteMany({}));
-  await deleteTable('Event', () => prisma.event.deleteMany({}));
-  await deleteTable('SocialAssistanceRecipient', () => prisma.socialAssistanceRecipient.deleteMany({}));
-  await deleteTable('SocialAssistance', () => prisma.socialAssistance.deleteMany({}));
-  await deleteTable('ForumCommentLike', () => prisma.forumCommentLike.deleteMany({}));
-  await deleteTable('ForumLike', () => prisma.forumLike.deleteMany({}));
-  await deleteTable('ForumComment', () => prisma.forumComment.deleteMany({}));
-  await deleteTable('ForumPost', () => prisma.forumPost.deleteMany({}));
-  await deleteTable('Document', () => prisma.document.deleteMany({}));
-  await deleteTable('Complaint', () => prisma.complaint.deleteMany({}));
-
-  // Then delete the core models
-  await deleteTable('Resident', () => prisma.resident.deleteMany({}));
-  await deleteTable('User', () => prisma.user.deleteMany({}));
-  await deleteTable('Family', () => prisma.family.deleteMany({}));
-  await deleteTable('RT', () => prisma.rT.deleteMany({}));
+  // Core models. Deleting User will cascade to Resident.
+  await prisma.user.deleteMany().catch(e => console.log('Skipping User...'));
+  await prisma.family.deleteMany().catch(e => console.log('Skipping Family...'));
+  await prisma.rT.deleteMany().catch(e => console.log('Skipping RT...'));
+  await prisma.socialAssistance.deleteMany().catch(e => console.log('Skipping SocialAssistance...'));
 
   // Create RT entries first
   const rt1 = await prisma.rT.create({
