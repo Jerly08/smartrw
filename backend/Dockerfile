@@ -30,7 +30,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 
 ENV NODE_ENV=production
-ENV PRISMA_CLI_BINARY_TARGETS=linux-musl
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
 
 # Install production dependencies and Prisma CLI
 COPY package*.json ./
@@ -39,10 +39,13 @@ RUN npm ci --only=production && npm install prisma
 # Copy built application and Prisma files
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
-# Generate Prisma client for production
-RUN npx prisma generate
+# Generate Prisma client for production with explicit binary target
+RUN npx prisma generate --schema=./prisma/schema.prisma
+
+# Verify the engines are in place
+RUN ls -la node_modules/@prisma/engines/ || echo "Engines directory not found"
+RUN ls -la node_modules/.prisma/client/ || echo "Prisma client not found"
 
 # Create uploads directory
 RUN mkdir -p uploads/residents uploads/complaints uploads/documents uploads/events
