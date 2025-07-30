@@ -2,7 +2,8 @@ import express from 'express';
 import * as authController from '../controllers/auth.controller';
 import { validateRequest } from '../middleware/validation.middleware';
 import { authenticate, authorize } from '../middleware/auth.middleware';
-import { registerSchema, loginSchema, changePasswordSchema, updateProfileSchema } from '../schemas/auth.schema';
+import { uploadFields } from '../middleware/upload.middleware';
+import { registerSchema, loginSchema, changePasswordSchema, updateProfileSchema, verifyResidentSchema } from '../schemas/auth.schema';
 
 const router = express.Router();
 
@@ -18,6 +19,26 @@ router.put(
   authenticate,
   validateRequest(changePasswordSchema),
   authController.changePassword
+);
+
+// Verification routes
+router.get('/rts', authenticate, authController.getAvailableRTs);
+router.post(
+  '/verify-resident',
+  authenticate,
+  validateRequest(verifyResidentSchema),
+  authController.verifyResident
+);
+
+// Route for uploading verification documents
+router.post(
+  '/upload-verification',
+  authenticate,
+  uploadFields([
+    { name: 'ktp', maxCount: 1 },
+    { name: 'kk', maxCount: 1 },
+  ]),
+  authController.uploadVerificationDocuments
 );
 
 // Admin only routes

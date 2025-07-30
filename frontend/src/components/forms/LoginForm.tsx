@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { LoginFormData, loginSchema } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 export default function LoginForm() {
   const { login, loading, error } = useAuth();

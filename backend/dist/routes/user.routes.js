@@ -44,6 +44,12 @@ const user_schema_1 = require("../schemas/user.schema");
 const router = express_1.default.Router();
 // Admin only routes
 router.get('/', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), userController.getAllUsers);
+// RW management routes (Admin only) - Place these BEFORE parameterized routes
+router.post('/rw', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), userController.createRWUser);
+router.get('/rw', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), userController.getAllRWUsers);
+router.put('/rw/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), userController.updateRWUser);
+router.delete('/rw/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), userController.deleteRWUser);
+// Parameterized routes - Place these AFTER specific routes
 router.delete('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), userController.deleteUser);
 router.put('/:id/role', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), (0, validation_middleware_1.validateRequest)(user_schema_1.updateUserRoleSchema), userController.updateUserRole);
 // Protected routes (accessible by the user themselves or admins)

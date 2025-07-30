@@ -18,12 +18,23 @@ export default function Header({ toggleSidebar }: HeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+  
   const { 
     notifications, 
     unreadCount, 
     loading: notificationsLoading,
     markAsRead
-  } = useNotifications({ limit: 5 });
+  } = useNotifications({});
 
   // Handle notification click
   const handleNotificationClick = async (id: number) => {
@@ -84,7 +95,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
                     </div>
                   ) : notifications.length > 0 ? (
                     <div className="py-1">
-                      {notifications.map((notification) => (
+                      {notifications.slice(0, 5).map((notification) => (
                         <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification.id)}
@@ -94,7 +105,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
                         >
                           <div className="flex justify-between">
                             <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                            <p className="text-xs text-gray-500">{notification.timeAgo}</p>
+                            <p className="text-xs text-gray-500">{formatDate(notification.createdAt)}</p>
                           </div>
                           <p className="mt-1 text-sm text-gray-600">{notification.message}</p>
                         </div>

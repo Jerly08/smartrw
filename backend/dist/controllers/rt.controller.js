@@ -149,6 +149,19 @@ const createRT = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         });
         console.log('Request body:', JSON.stringify(req.body, null, 2));
         console.log('Headers:', JSON.stringify(req.headers, null, 2));
+        // Detailed debugging for the "number" field
+        const rawNumber = req.body.number;
+        console.log('=== Number Field Analysis ===');
+        console.log('Raw number field:', JSON.stringify(rawNumber));
+        console.log('Type of number field:', typeof rawNumber);
+        console.log('Length of number field:', rawNumber ? rawNumber.length : 'N/A');
+        console.log('Number field character codes:', rawNumber ? Array.from(rawNumber).map((char) => char.charCodeAt(0)) : 'N/A');
+        console.log('Number field after trim:', rawNumber ? JSON.stringify(rawNumber.trim()) : 'N/A');
+        // Normalize the number field if it exists
+        if (rawNumber && typeof rawNumber === 'string') {
+            req.body.number = rawNumber.trim();
+            console.log('Normalized number field:', JSON.stringify(req.body.number));
+        }
         // Validate request body against schema
         let validatedData;
         try {
@@ -156,8 +169,19 @@ const createRT = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
             console.log('Validation successful:', JSON.stringify(validatedData, null, 2));
         }
         catch (validationError) {
+            console.error('=== Validation Error Details ===');
             console.error('Validation failed:', validationError);
             if (validationError instanceof zod_1.ZodError) {
+                console.error('Detailed Zod errors:');
+                validationError.errors.forEach((err, index) => {
+                    console.error(`Error ${index + 1}:`, {
+                        path: err.path,
+                        message: err.message,
+                        code: err.code,
+                        received: 'received' in err ? err.received : 'N/A',
+                        expected: 'expected' in err ? err.expected : 'N/A'
+                    });
+                });
                 const errors = validationError.errors.map(err => {
                     return `${err.path.join('.')}: ${err.message}`;
                 });

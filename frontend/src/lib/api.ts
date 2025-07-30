@@ -1,7 +1,17 @@
+// Resident Document type definition (for verification docs)
+export type ResidentDocumentInfo = {
+  id: number;
+  type: string;
+  filename: string;
+  uploadedAt: string | null;
+  status: string;
+  fileUrl: string | null;
+};
+
 import axios from 'axios';
 import { AuthResponse, LoginFormData, RegisterFormData } from './types';
 import { Resident, ResidentFormData, ResidentFilter } from './types/resident';
-import { Document, DocumentFormData, DocumentFilter } from './types/document';
+import { Document, DocumentFormData, DocumentFilter, DocumentStatus } from './types/document';
 import { Event, EventFormData, EventFilter, RSVPFormData, PhotoUploadData } from './types/event';
 import { Complaint, ComplaintFormData, ComplaintFilter, ResponseFormData } from './types/complaint';
 import { 
@@ -24,6 +34,7 @@ import {
 import {
   Notification,
   NotificationType,
+  NotificationPriority,
   NotificationFilter,
   NotificationResponse
 } from './types/notification';
@@ -101,6 +112,35 @@ export const authApi = {
       success: response.data.status === 'success',
       message: response.data.message
     };
+  },
+
+  verify: async (data: {
+    name: string;
+    birthDate: string;
+    address: string;
+    rtId: number;
+    nik?: string;
+    noKK?: string;
+    gender?: string;
+    familyRole?: string;
+  }): Promise<{success: boolean, message: string, isUpdate?: boolean}> => {
+    console.log('Verifying resident data');
+    const response = await api.post<{status: string, message: string, data?: any}>('/auth/verify-resident', data);
+    console.log('Verification response:', response.data);
+    return {
+      success: response.data.status === 'success',
+      message: response.data.message,
+      isUpdate: response.data.data?.isUpdate
+    };
+  },
+
+  uploadVerificationDocuments: async (data: FormData): Promise<{ success: boolean, message: string }> => {
+    const response = await api.post('/auth/upload-verification', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
 };
 
@@ -221,9 +261,21 @@ export const residentApi = {
   },
 
   // Verify resident
-  verifyResident: async (id: number) => {
+  verifyResident: async (id: number): Promise<Resident> => {
     const response = await api.patch(`/residents/${id}/verify`);
     return response.data.data.resident as Resident;
+  },
+
+  // Get residents pending verification for RT
+  getPendingVerification: async (): Promise<Resident[]> => {
+    const response = await api.get('/residents/pending-verification');
+    return response.data.data as Resident[];
+  },
+
+  // Verify resident by RT
+  verifyResidentByRT: async (id: number): Promise<Resident> => {
+    const response = await api.patch(`/residents/${id}/verify-by-rt`);
+    return response.data.data as Resident;
   },
 
   // Import residents from CSV file
@@ -268,6 +320,12 @@ export const residentApi = {
     const response = await api.get(`/families/${familyId}`);
     return response.data.data.family.members as Resident[];
   },
+
+  // Get resident documents
+  getResidentDocuments: async (residentId: number): Promise<ResidentDocumentInfo[]> => {
+    const response = await api.get(`/residents/${residentId}/documents`);
+    return response.data.data.documents as ResidentDocumentInfo[];
+  },
 };
 
 // Document API functions
@@ -289,11 +347,9 @@ export const documentApi = {
     const formData = new FormData();
     
     // Add text fields
-    Object.keys(data).forEach(key => {
-      if (key !== 'attachments') {
-        formData.append(key, data[key]);
-      }
-    });
+    formData.append('type', data.type);
+    formData.append('subject', data.subject);
+    formData.append('description', data.description);
     
     // Add attachments if any
     if (data.attachments && data.attachments.length > 0) {
@@ -517,11 +573,12 @@ export const complaintApi = {
     const formData = new FormData();
     
     // Add text fields
-    Object.keys(data).forEach(key => {
-      if (key !== 'attachments') {
-        formData.append(key, data[key]);
-      }
-    });
+    formData.append('title', data.title);
+    formData.append('category', data.category);
+    formData.append('description', data.description);
+    if (data.location) {
+      formData.append('location', data.location);
+    }
     
     // Add attachments if any
     if (data.attachments && data.attachments.length > 0) {
@@ -544,11 +601,10 @@ export const complaintApi = {
     const formData = new FormData();
     
     // Add text fields
-    Object.keys(data).forEach(key => {
-      if (key !== 'attachments') {
-        formData.append(key, data[key]);
-      }
-    });
+    if (data.title) formData.append('title', data.title);
+    if (data.category) formData.append('category', data.category);
+    if (data.description) formData.append('description', data.description);
+    if (data.location) formData.append('location', data.location);
     
     // Add attachments if any
     if (data.attachments && data.attachments.length > 0) {
@@ -862,15 +918,15 @@ export const notificationApi = {
     const mockNotifications: Notification[] = [
       {
         id: 1,
-        type: 'DOCUMENT',
+        type: NotificationType.DOCUMENT,
         title: 'Dokumen Memerlukan Verifikasi RT',
         message: 'Dokumen Surat Pengantar KTP dari Ahmad Fauzi memerlukan verifikasi Anda',
         isRead: false,
-        priority: 'HIGH',
+        priority: NotificationPriority.HIGH,
         createdAt: new Date().toISOString(),
         data: JSON.stringify({
           documentId: 101,
-          documentType: 'PENGANTAR_SKCK',
+          documentType: 'PENGANTAR_SKCC',
           documentSubject: 'Permohonan Pengantar KTP',
           requesterName: 'Ahmad Fauzi',
           requesterNik: '3175020501990003',
@@ -879,11 +935,11 @@ export const notificationApi = {
       },
       {
         id: 2,
-        type: 'COMPLAINT',
+        type: NotificationType.COMPLAINT,
         title: 'Pengaduan Baru',
         message: 'Pengaduan baru tentang kerusakan jalan di RT Anda',
         isRead: false,
-        priority: 'NORMAL',
+        priority: NotificationPriority.NORMAL,
         createdAt: new Date(Date.now() - 3600000).toISOString(),
         data: JSON.stringify({
           complaintId: 201,
@@ -894,11 +950,11 @@ export const notificationApi = {
       },
       {
         id: 3,
-        type: 'SYSTEM',
+        type: NotificationType.SYSTEM,
         title: 'Verifikasi Warga Baru',
         message: 'Warga baru Siti Rahayu memerlukan verifikasi Anda',
         isRead: false,
-        priority: 'HIGH',
+        priority: NotificationPriority.HIGH,
         createdAt: new Date(Date.now() - 86400000).toISOString(),
         data: JSON.stringify({
           residentId: 301,
@@ -909,11 +965,11 @@ export const notificationApi = {
       },
       {
         id: 4,
-        type: 'SOCIAL_ASSISTANCE',
+        type: NotificationType.SOCIAL_ASSISTANCE,
         title: 'Verifikasi Bantuan Sosial',
         message: 'Calon penerima bantuan BLT memerlukan verifikasi Anda',
         isRead: false,
-        priority: 'NORMAL',
+        priority: NotificationPriority.NORMAL,
         createdAt: new Date(Date.now() - 172800000).toISOString(),
         data: JSON.stringify({
           assistanceId: 401,
@@ -928,11 +984,11 @@ export const notificationApi = {
       },
       {
         id: 5,
-        type: 'EVENT',
+        type: NotificationType.EVENT,
         title: 'Kegiatan Baru',
         message: 'Kegiatan Kerja Bakti akan dilaksanakan pada Minggu, 21 Juli 2024',
         isRead: true,
-        priority: 'NORMAL',
+        priority: NotificationPriority.NORMAL,
         createdAt: new Date(Date.now() - 259200000).toISOString(),
         data: JSON.stringify({
           eventId: 501,
@@ -1190,6 +1246,59 @@ export const dashboardApi = {
       console.log(`Using mock document recommendation: ${action} for ID ${id}`);
       return { success: true };
     }
+  },
+};
+
+// RW Management API functions
+export const rwApi = {
+  // Get all RW users
+  getAllRWUsers: async () => {
+    const response = await api.get('/users/rw');
+    // Transform backend data to match frontend expectations
+    const transformedData = {
+      rwUsers: response.data.data.rwUsers.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        number: user.resident?.rwNumber || '',
+        phoneNumber: user.resident?.phoneNumber || '',
+        address: user.resident?.address || '',
+        isActive: user.resident?.isVerified ?? true,
+        createdAt: user.createdAt
+      }))
+    };
+    return transformedData;
+  },
+
+  // Create new RW user
+  createRWUser: async (data: {
+    name: string;
+    email: string;
+    rwNumber: string;
+    phoneNumber?: string;
+    address?: string;
+  }) => {
+    const response = await api.post('/users/rw', data);
+    return response.data.data;
+  },
+
+  // Update RW user
+  updateRWUser: async (id: number, data: {
+    name?: string;
+    email?: string;
+    rwNumber?: string;
+    phoneNumber?: string;
+    address?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await api.put(`/users/rw/${id}`, data);
+    return response.data.data;
+  },
+
+  // Delete RW user
+  deleteRWUser: async (id: number) => {
+    const response = await api.delete(`/users/rw/${id}`);
+    return response.data;
   },
 };
 

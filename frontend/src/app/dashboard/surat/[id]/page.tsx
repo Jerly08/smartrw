@@ -51,7 +51,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
       } else if (status === DocumentStatus.SELESAI) {
         await documentApi.completeDocument(documentId);
       } else if (status === DocumentStatus.DIPROSES) {
-        await documentApi.updateDocumentStatus(documentId, status);
+        await documentApi.updateDocumentStatus(documentId, { status });
       }
       fetchDocument();
     } catch (error) {

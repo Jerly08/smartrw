@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { documentApi, eventApi, complaintApi, forumApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { Document } from '@/lib/types/document';
+import { Event, RSVPStatus } from '@/lib/types/event';
+import { ForumPost, ForumCategory } from '@/lib/types/forum';
 
 // Dashboard data types
 export interface DashboardDocument {
@@ -18,7 +21,7 @@ export interface DashboardEvent {
   time: string;
   location: string;
   description: string;
-  rsvpStatus?: 'AKAN_HADIR' | 'TIDAK_HADIR' | 'HADIR' | null;
+  rsvpStatus?: RSVPStatus | null;
 }
 
 export interface DashboardAnnouncement {
@@ -100,7 +103,7 @@ export function useDashboardData() {
         requesterId: user?.id 
       });
       
-      const formattedDocs = response.documents.map(doc => ({
+      const formattedDocs = response.documents.map((doc: Document) => ({
         id: doc.id,
         type: doc.type,
         subject: doc.subject,
@@ -109,7 +112,7 @@ export function useDashboardData() {
       }));
       
       // Count pending documents
-      const pendingCount = response.documents.filter(doc => 
+      const pendingCount = response.documents.filter((doc: Document) => 
         doc.status === 'DIAJUKAN' || doc.status === 'DIPROSES'
       ).length;
       
@@ -143,9 +146,9 @@ export function useDashboardData() {
         limit: 5
       });
       
-      const formattedEvents = response.events.map(event => {
+      const formattedEvents = response.events.map((event: Event) => {
         // Find user's RSVP status if they have responded
-        const userRsvp = event.participants?.find(p => p.user.id === user?.id);
+        const userRsvp = event.participants?.find((p: any) => p.user.id === user?.id);
         
         return {
           id: event.id,
@@ -184,12 +187,12 @@ export function useDashboardData() {
     try {
       // Get announcements from forum posts with PENGUMUMAN category
       const response = await forumApi.getAllPosts({ 
-        category: 'PENGUMUMAN',
+        category: ForumCategory.PENGUMUMAN,
         limit: 5,
         isPinned: true
       });
       
-      const formattedAnnouncements = response.posts.map(post => ({
+      const formattedAnnouncements = response.posts.map((post: ForumPost) => ({
         id: post.id,
         title: post.title,
         date: formatDate(post.createdAt),
@@ -219,7 +222,7 @@ export function useDashboardData() {
   };
 
   // Handle RSVP to event
-  const handleRsvp = async (eventId: number, status: 'AKAN_HADIR' | 'TIDAK_HADIR') => {
+  const handleRsvp = async (eventId: number, status: RSVPStatus) => {
     try {
       await eventApi.rsvpToEvent(eventId, { status });
       

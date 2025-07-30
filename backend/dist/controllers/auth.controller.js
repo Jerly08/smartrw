@@ -41,10 +41,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changePassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
+exports.uploadVerificationDocuments = exports.getAvailableRTs = exports.verifyResident = exports.changePassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
 const authService = __importStar(require("../services/auth.service"));
 const error_middleware_1 = require("../middleware/error.middleware");
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 // Register a new user
 const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -169,3 +174,134 @@ const changePassword = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.changePassword = changePassword;
+// Verifikasi warga dengan data lengkap dan pilihan RT
+const verifyResident = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        const userId = req.user.id;
+        const { name, birthDate, address, rtId, nik, noKK, gender, familyRole } = req.body;
+        const result = yield authService.verifyResidentWithRT(userId, {
+            name,
+            birthDate,
+            address,
+            rtId,
+            nik,
+            noKK,
+            gender,
+            familyRole
+        });
+        const message = result.isUpdate
+            ? 'Data verifikasi berhasil diperbarui dan menunggu verifikasi ulang dari RT'
+            : 'Verifikasi berhasil, data warga telah tersimpan di RT yang dipilih';
+        res.status(200).json({
+            status: 'success',
+            message,
+            data: {
+                resident: result.resident,
+                rt: result.rt,
+                isUpdate: result.isUpdate
+            }
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.verifyResident = verifyResident;
+// Get available RTs for verification
+const getAvailableRTs = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const rts = yield authService.getActiveRTs();
+        res.status(200).json({
+            status: 'success',
+            data: {
+                rts
+            }
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getAvailableRTs = getAvailableRTs;
+// Upload verification documents
+const uploadVerificationDocuments = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        const userId = req.user.id;
+        const { name, birthDate, address, rtId, nik, noKK, gender, familyRole } = req.body;
+        // Get the current user's resident data to get NIK and noKK
+        const user = yield authService.getUserProfile(userId);
+        if (!user.resident || !user.resident.nik || !user.resident.noKK) {
+            throw new error_middleware_1.ApiError('Please complete resident verification first before uploading documents', 400);
+        }
+        const residentNik = user.resident.nik;
+        const residentNoKK = user.resident.noKK;
+        // Create upload directory if it doesn't exist
+        const uploadDir = path_1.default.join(__dirname, '../../uploads/residents');
+        if (!fs_1.default.existsSync(uploadDir)) {
+            fs_1.default.mkdirSync(uploadDir, { recursive: true });
+        }
+        const files = req.files;
+        const uploadedFiles = [];
+        // Validate file types (only PNG/JPG allowed)
+        const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        // Process KTP file
+        if (files.ktp && files.ktp[0]) {
+            const ktpFile = files.ktp[0];
+            if (!allowedMimeTypes.includes(ktpFile.mimetype)) {
+                throw new error_middleware_1.ApiError('KTP file must be PNG or JPG format only', 400);
+            }
+            const ktpFileName = `ktp_${residentNik}.jpg`;
+            const ktpPath = path_1.default.join(uploadDir, ktpFileName);
+            // Write file to disk
+            yield fs_1.default.promises.writeFile(ktpPath, ktpFile.buffer);
+            uploadedFiles.push(`/uploads/residents/${ktpFileName}`);
+        }
+        // Process KK file
+        if (files.kk && files.kk[0]) {
+            const kkFile = files.kk[0];
+            if (!allowedMimeTypes.includes(kkFile.mimetype)) {
+                throw new error_middleware_1.ApiError('KK file must be PNG or JPG format only', 400);
+            }
+            const kkFileName = `kk_${residentNoKK}.jpg`;
+            const kkPath = path_1.default.join(uploadDir, kkFileName);
+            // Write file to disk
+            yield fs_1.default.promises.writeFile(kkPath, kkFile.buffer);
+            uploadedFiles.push(`/uploads/residents/${kkFileName}`);
+        }
+        if (uploadedFiles.length === 0) {
+            throw new error_middleware_1.ApiError('No valid files uploaded', 400);
+        }
+        // Update resident verification data if provided
+        let result;
+        if (name && birthDate && address && rtId && nik && noKK && gender && familyRole) {
+            result = yield authService.verifyResidentWithRT(userId, {
+                name,
+                birthDate,
+                address,
+                rtId,
+                nik,
+                noKK,
+                gender,
+                familyRole
+            });
+        }
+        res.status(200).json({
+            status: 'success',
+            message: `Documents uploaded successfully: ${uploadedFiles.length} file(s)`,
+            data: {
+                uploadedFiles,
+                resident: (result === null || result === void 0 ? void 0 : result.resident) || user.resident
+            }
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.uploadVerificationDocuments = uploadVerificationDocuments;

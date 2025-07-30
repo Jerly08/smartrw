@@ -125,10 +125,41 @@ exports.getEventById = getEventById;
 // Create event
 const createEvent = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const eventData = req.body;
+        console.log("Received createEvent body:", req.body); // DEBUG LOG
+        console.log("Request headers:", req.headers); // DEBUG LOG
+        console.log("Request content-type:", req.headers['content-type']); // DEBUG LOG
         if (!req.user) {
             throw new error_middleware_1.ApiError('User not authenticated', 401);
         }
+        const { title, description, location, startDate, endDate, category, isPublished, targetRTs } = req.body;
+        // Validate required fields
+        if (!title || !description || !location || !startDate || !endDate || !category) {
+            throw new error_middleware_1.ApiError('Missing required fields', 400);
+        }
+        // Convert date strings to Date objects
+        const startDateTime = new Date(startDate);
+        const endDateTime = new Date(endDate);
+        if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+            throw new error_middleware_1.ApiError('Invalid date format', 400);
+        }
+        if (startDateTime >= endDateTime) {
+            throw new error_middleware_1.ApiError('End date must be after start date', 400);
+        }
+        // Process targetRTs - convert array to JSON string
+        let targetRTsJson = undefined;
+        if (targetRTs && Array.isArray(targetRTs) && targetRTs.length > 0) {
+            targetRTsJson = JSON.stringify(targetRTs);
+        }
+        const eventData = {
+            title,
+            description,
+            location,
+            startDate: startDateTime,
+            endDate: endDateTime,
+            category,
+            isPublished: Boolean(isPublished),
+            targetRTs: targetRTsJson,
+        };
         const newEvent = yield eventService.createEvent(eventData, req.user.id);
         res.status(201).json({
             status: 'success',
@@ -153,7 +184,50 @@ const updateEvent = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         if (!req.user) {
             throw new error_middleware_1.ApiError('User not authenticated', 401);
         }
-        const eventData = req.body;
+        const { title, description, location, startDate, endDate, category, isPublished, targetRTs } = req.body;
+        const eventData = {};
+        // Only include provided fields in the update data
+        if (title !== undefined)
+            eventData.title = title;
+        if (description !== undefined)
+            eventData.description = description;
+        if (location !== undefined)
+            eventData.location = location;
+        if (category !== undefined)
+            eventData.category = category;
+        if (isPublished !== undefined)
+            eventData.isPublished = Boolean(isPublished);
+        // Process dates if provided
+        if (startDate !== undefined) {
+            const startDateTime = new Date(startDate);
+            if (isNaN(startDateTime.getTime())) {
+                throw new error_middleware_1.ApiError('Invalid start date format', 400);
+            }
+            eventData.startDate = startDateTime;
+        }
+        if (endDate !== undefined) {
+            const endDateTime = new Date(endDate);
+            if (isNaN(endDateTime.getTime())) {
+                throw new error_middleware_1.ApiError('Invalid end date format', 400);
+            }
+            eventData.endDate = endDateTime;
+        }
+        // Validate dates if both are provided
+        if (eventData.startDate && eventData.endDate && eventData.startDate >= eventData.endDate) {
+            throw new error_middleware_1.ApiError('End date must be after start date', 400);
+        }
+        // Process targetRTs if provided
+        if (targetRTs !== undefined) {
+            if (targetRTs === null || targetRTs === '') {
+                eventData.targetRTs = undefined;
+            }
+            else if (Array.isArray(targetRTs)) {
+                eventData.targetRTs = targetRTs.length > 0 ? JSON.stringify(targetRTs) : undefined;
+            }
+            else if (typeof targetRTs === 'string') {
+                eventData.targetRTs = targetRTs;
+            }
+        }
         const updatedEvent = yield eventService.updateEvent(eventId, eventData, req.user.id);
         res.status(200).json({
             status: 'success',

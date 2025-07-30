@@ -1,0 +1,45 @@
+
+Flow yang Direkomendasikan:
+
+Step 1: Initial Registration
+1. Warga mengisi form registrasi dasar:
+•  Email/Username
+•  Password
+•  Nama Lengkap
+•  Nomor Telepon
+•  NIK (sebagai verifikasi)
+
+Step 2: Profile Completion (setelah login)
+2. Setelah berhasil login pertama kali, warga diarahkan untuk melengkapi data:
+•  Alamat lengkap
+•  RT/RW
+•  Status kepala keluarga/anggota keluarga
+•  Data keluarga
+•  Upload foto KTP
+•  Data tambahan lainnya
+
+
+Flow Pendaftaran & Verifikasi:
+
+1. Warga (Self Registration)
+•  Daftar sendiri dengan data dasar
+•  Lengkapi profil setelah login
+•  Status awal: "Pending Verification"
+
+2. RT (Verifikasi Tingkat Pertama)
+•  Review data warga di wilayahnya
+•  Verifikasi kesesuaian alamat dengan RT
+•  Verifikasi dokumen (KTP, dll)
+•  Action: Approve/Reject
+
+3. RW (Verifikasi Tingkat Kedua)
+•  Review data yang sudah di-approve RT
+•  Verifikasi lintas RT jika diperlukan
+•  Final validation
+•  Action: Approve/Reject
+
+4. Admin (Optional - Kontrol Sistem)
+•  Monitor keseluruhan proses
+•  Handle kasus khusus/komplain
+•  Manage user roles
+•  Backup verification jika RT/RW tidak aktif

@@ -13,7 +13,8 @@ import {
   FiPackage, 
   FiMessageSquare,
   FiSettings,
-  FiBell
+  FiBell,
+  FiCheckSquare
 } from 'react-icons/fi';
 
 interface NavItemProps {
@@ -75,7 +76,7 @@ export default function Sidebar() {
             href="/dashboard/notifikasi" 
             icon={<FiBell />} 
             label="Notifikasi" 
-            active={pathname.startsWith('/dashboard/notifikasi')} 
+            active={pathname?.startsWith('/dashboard/notifikasi') || false} 
           />
           
           {(isAdmin || isRW || isRT) && (
@@ -83,7 +84,7 @@ export default function Sidebar() {
               href="/dashboard/warga" 
               icon={<FiUsers />} 
               label="Data Warga" 
-              active={pathname.startsWith('/dashboard/warga')} 
+              active={pathname?.startsWith('/dashboard/warga') || false} 
             />
           )}
           
@@ -91,7 +92,7 @@ export default function Sidebar() {
             href="/dashboard/surat" 
             icon={<FiFileText />} 
             label="Administrasi Surat" 
-            active={pathname.startsWith('/dashboard/surat')} 
+            active={pathname?.startsWith('/dashboard/surat') || false} 
           />
           
           {(isAdmin || isRW) && (
@@ -100,19 +101,19 @@ export default function Sidebar() {
                 href="/dashboard/surat/template" 
                 icon={<FiFileText />} 
                 label="Template Dokumen" 
-                active={pathname.startsWith('/dashboard/surat/template')} 
+                active={pathname?.startsWith('/dashboard/surat/template') || false} 
               />
               <NavItem 
                 href="/dashboard/surat/digital-signature" 
                 icon={<FiFileText />} 
                 label="Tanda Tangan Digital" 
-                active={pathname.startsWith('/dashboard/surat/digital-signature')} 
+                active={pathname?.startsWith('/dashboard/surat/digital-signature') || false} 
               />
               <NavItem 
                 href="/dashboard/surat/statistics" 
                 icon={<FiFileText />} 
                 label="Statistik Dokumen" 
-                active={pathname.startsWith('/dashboard/surat/statistics')} 
+                active={pathname?.startsWith('/dashboard/surat/statistics') || false} 
               />
             </div>
           )}
@@ -121,14 +122,14 @@ export default function Sidebar() {
             href="/dashboard/kegiatan" 
             icon={<FiCalendar />} 
             label="Agenda & Kegiatan" 
-            active={pathname.startsWith('/dashboard/kegiatan')} 
+            active={pathname?.startsWith('/dashboard/kegiatan') || false} 
           />
           
           <NavItem 
             href="/dashboard/pengaduan" 
             icon={<FiAlertCircle />} 
             label="Pengaduan" 
-            active={pathname.startsWith('/dashboard/pengaduan')} 
+            active={pathname?.startsWith('/dashboard/pengaduan') || false} 
           />
           
           {(isAdmin || isRW || isRT) && (
@@ -136,7 +137,7 @@ export default function Sidebar() {
               href="/dashboard/bantuan" 
               icon={<FiPackage />} 
               label="Bantuan Sosial" 
-              active={pathname.startsWith('/dashboard/bantuan') && !pathname.includes('/eligibility')} 
+              active={(pathname?.startsWith('/dashboard/bantuan') && !pathname?.includes('/eligibility')) || false} 
             />
           )}
           
@@ -145,7 +146,7 @@ export default function Sidebar() {
               href="/dashboard/bantuan/eligibility" 
               icon={<FiPackage />} 
               label="Bantuan Sosial" 
-              active={pathname.startsWith('/dashboard/bantuan/eligibility')} 
+              active={pathname?.startsWith('/dashboard/bantuan/eligibility') || false} 
             />
           )}
 
@@ -153,7 +154,7 @@ export default function Sidebar() {
             href="/dashboard/forum" 
             icon={<FiMessageSquare />} 
             label="Forum Komunikasi" 
-            active={pathname.startsWith('/dashboard/forum')} 
+            active={pathname?.startsWith('/dashboard/forum') || false} 
           />
         </nav>
         
@@ -161,18 +162,27 @@ export default function Sidebar() {
           Pengaturan
         </div>
         <nav className="space-y-1">
+          {isWarga && (
+            <NavItem 
+              href="/dashboard/verifikasi" 
+              icon={<FiCheckSquare />} 
+              label="Verifikasi Akun" 
+              active={pathname?.startsWith('/dashboard/verifikasi') || false} 
+            />
+          )}
+          
           <NavItem 
             href="/dashboard/profil" 
             icon={<FiSettings />} 
             label="Pengaturan Profil" 
-            active={pathname.startsWith('/dashboard/profil')} 
+            active={pathname?.startsWith('/dashboard/profil') || false} 
           />
           
           <NavItem 
             href="/dashboard/pengaturan" 
             icon={<FiSettings />} 
             label="Pengaturan Sistem" 
-            active={pathname.startsWith('/dashboard/pengaturan')} 
+            active={pathname?.startsWith('/dashboard/pengaturan') || false} 
           />
           
           {isAdmin && (
@@ -180,7 +190,7 @@ export default function Sidebar() {
               href="/dashboard/admin" 
               icon={<FiSettings />} 
               label="Pengaturan Admin" 
-              active={pathname.startsWith('/dashboard/admin')} 
+              active={pathname?.startsWith('/dashboard/admin') || false} 
             />
           )}
         </nav>

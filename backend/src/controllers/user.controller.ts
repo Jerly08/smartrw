@@ -154,3 +154,93 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+// RW management functions
+
+// Create RW user (admin only)
+export const createRWUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, rwNumber, phoneNumber, address } = req.body;
+    
+    const rwUser = await userService.createRWUser({
+      name,
+      email,
+      rwNumber,
+      phoneNumber,
+      address
+    });
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'RW user created successfully',
+      data: { user: rwUser.user, credentials: rwUser.credentials },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all RW users (admin only)
+export const getAllRWUsers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rwUsers = await userService.getAllRWUsers();
+    
+    res.status(200).json({
+      status: 'success',
+      results: rwUsers.length,
+      data: { rwUsers },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update RW user (admin only)
+export const updateRWUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    if (isNaN(userId)) {
+      throw new ApiError('Invalid user ID', 400);
+    }
+    
+    const { name, email, rwNumber, phoneNumber, address, isActive } = req.body;
+    
+    const updatedUser = await userService.updateRWUser(userId, {
+      name,
+      email,
+      rwNumber,
+      phoneNumber,
+      address,
+      isActive
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'RW user updated successfully',
+      data: { user: updatedUser },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete RW user (admin only)
+export const deleteRWUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    if (isNaN(userId)) {
+      throw new ApiError('Invalid user ID', 400);
+    }
+    
+    await userService.deleteRWUser(userId);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'RW user deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};

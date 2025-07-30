@@ -41,17 +41,27 @@ const residentController = __importStar(require("../controllers/resident.control
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const validation_middleware_1 = require("../middleware/validation.middleware");
 const resident_schema_1 = require("../schemas/resident.schema");
+const upload_middleware_1 = require("../middleware/upload.middleware");
 const router = express_1.default.Router();
 // Protected routes - require authentication
 router.get('/', auth_middleware_1.authenticate, residentController.getAllResidents);
 router.get('/statistics', auth_middleware_1.authenticate, residentController.getResidentStatistics);
+// Get residents pending verification for RT - MUST be before /:id route
+router.get('/pending-verification', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), residentController.getPendingVerification);
 router.get('/:id', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentById);
+// Get resident documents
+router.get('/:id/documents', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentDocuments);
+// Upload document for resident
+router.post('/:id/documents/upload', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, (0, upload_middleware_1.uploadSingle)('document'), residentController.uploadResidentDocument);
 // Get social assistance history for a resident
 router.get('/:id/social-assistance', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentSocialAssistance);
 // Routes for RT, RW, and Admin
 router.post('/', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), (0, validation_middleware_1.validateRequest)(resident_schema_1.createResidentSchema), residentController.createResident);
 router.post('/import', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), (0, validation_middleware_1.validateRequest)(resident_schema_1.importResidentsSchema), residentController.importResidents);
+router.get('/export', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), residentController.exportResidents);
 router.put('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), auth_middleware_1.checkResidentAccess, (0, validation_middleware_1.validateRequest)(resident_schema_1.updateResidentSchema), residentController.updateResident);
+router.patch('/:id/verify', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), auth_middleware_1.checkResidentAccess, (0, validation_middleware_1.validateRequest)(resident_schema_1.verifyResidentSchema), residentController.verifyResident);
+// Verify resident by RT
+router.patch('/:id/verify-by-rt', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), residentController.verifyByRT);
 router.delete('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RW', 'ADMIN']), residentController.deleteResident);
-router.post('/:id/verify', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), auth_middleware_1.checkResidentAccess, (0, validation_middleware_1.validateRequest)(resident_schema_1.verifyResidentSchema), residentController.verifyResident);
 exports.default = router;

@@ -31,48 +31,40 @@ const eventBaseSchema = {
     }),
     category: zod_1.z.enum(eventCategories),
     isPublished: zod_1.z.boolean().optional().default(false),
-    targetRTs: zod_1.z.string().optional(), // JSON array of RT numbers
+    targetRTs: zod_1.z.array(zod_1.z.string()).optional(), // Array of RT numbers
 };
 // Create event schema
-exports.createEventSchema = zod_1.z.object({
-    body: zod_1.z.object(eventBaseSchema).refine((data) => {
-        const startDate = new Date(data.startDate);
-        const endDate = new Date(data.endDate);
-        return startDate <= endDate;
-    }, {
-        message: 'End date must be after or equal to start date',
-        path: ['endDate'],
-    }),
+exports.createEventSchema = zod_1.z.object(eventBaseSchema).refine((data) => {
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    return startDate <= endDate;
+}, {
+    message: 'End date must be after or equal to start date',
+    path: ['endDate'],
 });
 // Update event schema
-exports.updateEventSchema = zod_1.z.object({
-    body: zod_1.z.object(Object.assign({}, Object.fromEntries(Object.entries(eventBaseSchema).map(([key, schema]) => [key, schema.optional()])))).refine(data => Object.keys(data).length > 0, {
-        message: 'At least one field must be provided for update',
-    }).refine((data) => {
-        if (data.startDate && data.endDate) {
-            // Ensure both are strings before creating Date objects
-            const startDate = new Date(String(data.startDate));
-            const endDate = new Date(String(data.endDate));
-            return startDate <= endDate;
-        }
-        return true;
-    }, {
-        message: 'End date must be after or equal to start date',
-        path: ['endDate'],
-    }),
+exports.updateEventSchema = zod_1.z.object(Object.assign({}, Object.fromEntries(Object.entries(eventBaseSchema).map(([key, schema]) => [key, schema.optional()])))).refine(data => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for update',
+}).refine((data) => {
+    if (data.startDate && data.endDate) {
+        // Ensure both are strings before creating Date objects
+        const startDate = new Date(String(data.startDate));
+        const endDate = new Date(String(data.endDate));
+        return startDate <= endDate;
+    }
+    return true;
+}, {
+    message: 'End date must be after or equal to start date',
+    path: ['endDate'],
 });
 // RSVP schema
 exports.rsvpEventSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        status: zod_1.z.enum(rsvpStatuses),
-    }),
+    status: zod_1.z.enum(rsvpStatuses),
 });
 // Upload event photo schema
 exports.uploadEventPhotoSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        photoUrl: zod_1.z.string().url('Photo URL must be a valid URL'),
-        caption: zod_1.z.string().optional(),
-    }),
+    photoUrl: zod_1.z.string().url('Photo URL must be a valid URL'),
+    caption: zod_1.z.string().optional(),
 });
 // Search events schema
 exports.searchEventsSchema = zod_1.z.object({

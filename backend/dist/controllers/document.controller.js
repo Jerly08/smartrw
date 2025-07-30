@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.downloadAttachment = exports.getDocumentStatistics = exports.deleteDocument = exports.processDocument = exports.updateDocument = exports.createDocument = exports.getDocumentById = exports.getAllDocuments = void 0;
+exports.downloadDocument = exports.downloadAttachment = exports.getDocumentStatistics = exports.deleteDocument = exports.processDocument = exports.updateDocument = exports.createDocument = exports.getDocumentById = exports.getAllDocuments = void 0;
 const documentService = __importStar(require("../services/document.service"));
 const error_middleware_1 = require("../middleware/error.middleware");
 const client_1 = require("@prisma/client");
@@ -288,9 +288,31 @@ const deleteDocument = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
 exports.deleteDocument = deleteDocument;
 // Get document statistics
 const getDocumentStatistics = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         if (!req.user) {
             throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        // Build where condition based on user role
+        let whereCondition = {};
+        // For RT, only show documents from their RT
+        if (req.user.role === 'RT') {
+            // Get RT user's resident data to determine their RT number
+            const rtUserResident = yield prisma.user.findUnique({
+                where: { id: req.user.id },
+                include: {
+                    resident: true
+                }
+            });
+            if ((_a = rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) === null || _a === void 0 ? void 0 : _a.rtNumber) {
+                whereCondition = {
+                    requester: {
+                        resident: {
+                            rtNumber: rtUserResident.resident.rtNumber
+                        }
+                    }
+                };
+            }
         }
         // Get statistics based on user role
         const statistics = {
@@ -298,24 +320,37 @@ const getDocumentStatistics = (req, res, next) => __awaiter(void 0, void 0, void
             pending: 0,
             approved: 0,
             rejected: 0,
-            completed: 0
+            completed: 0,
+            diajukan: 0,
+            diproses: 0,
+            disetujui: 0,
+            ditandatangani: 0,
+            selesai: 0,
+            ditolak: 0
         };
-        // For now, we'll just query the database directly
-        const total = yield prisma.document.count();
-        const pending = yield prisma.document.count({ where: { status: 'DIAJUKAN' } });
-        const approved = yield prisma.document.count({ where: { status: 'DISETUJUI' } });
-        const rejected = yield prisma.document.count({ where: { status: 'DITOLAK' } });
-        const completed = yield prisma.document.count({ where: { status: 'SELESAI' } });
+        // Count documents with proper filtering
+        const total = yield prisma.document.count({ where: whereCondition });
+        const diajukan = yield prisma.document.count({ where: Object.assign(Object.assign({}, whereCondition), { status: 'DIAJUKAN' }) });
+        const diproses = yield prisma.document.count({ where: Object.assign(Object.assign({}, whereCondition), { status: 'DIPROSES' }) });
+        const disetujui = yield prisma.document.count({ where: Object.assign(Object.assign({}, whereCondition), { status: 'DISETUJUI' }) });
+        const ditandatangani = yield prisma.document.count({ where: Object.assign(Object.assign({}, whereCondition), { status: 'DITANDATANGANI' }) });
+        const selesai = yield prisma.document.count({ where: Object.assign(Object.assign({}, whereCondition), { status: 'SELESAI' }) });
+        const ditolak = yield prisma.document.count({ where: Object.assign(Object.assign({}, whereCondition), { status: 'DITOLAK' }) });
         statistics.total = total;
-        statistics.pending = pending;
-        statistics.approved = approved;
-        statistics.rejected = rejected;
-        statistics.completed = completed;
+        statistics.pending = diajukan; // Menunggu persetujuan
+        statistics.approved = disetujui + ditandatangani; // Yang sudah disetujui + ditandatangani
+        statistics.rejected = ditolak;
+        statistics.completed = selesai;
+        // Also include individual status counts for more detailed statistics
+        statistics.diajukan = diajukan;
+        statistics.diproses = diproses;
+        statistics.disetujui = disetujui;
+        statistics.ditandatangani = ditandatangani;
+        statistics.selesai = selesai;
+        statistics.ditolak = ditolak;
         res.status(200).json({
             status: 'success',
-            data: {
-                statistics,
-            },
+            data: statistics,
         });
     }
     catch (error) {
@@ -376,3 +411,48 @@ const downloadAttachment = (req, res, next) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.downloadAttachment = downloadAttachment;
+// Download completed document
+const downloadDocument = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const documentId = parseInt(req.params.id);
+        if (isNaN(documentId)) {
+            throw new error_middleware_1.ApiError('Invalid document ID', 400);
+        }
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        // Get document to check permissions and status
+        const document = yield documentService.getDocumentById(documentId);
+        // Check if document is completed
+        if (document.status !== 'SELESAI') {
+            throw new error_middleware_1.ApiError('Document is not yet completed', 400);
+        }
+        // Check if user is authorized to download
+        const isAuthorized = document.requesterId === req.user.id ||
+            ['ADMIN', 'RW', 'RT'].includes(req.user.role);
+        if (!isAuthorized) {
+            throw new error_middleware_1.ApiError('You are not authorized to download this document', 403);
+        }
+        // For now, we'll create a simple PDF response
+        // In a real implementation, you would generate a proper PDF document
+        const pdfContent = `
+      SURAT ${document.type}
+      
+      Subjek: ${document.subject}
+      Deskripsi: ${document.description}
+      Status: ${document.status}
+      Disetujui oleh: ${document.approvedBy || '-'}
+      Ditandatangani oleh: ${document.signedBy || '-'}
+      Tanggal selesai: ${document.completedAt ? new Date(document.completedAt).toLocaleDateString('id-ID') : '-'}
+    `;
+        // Set response headers for PDF download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="surat-${documentId}.pdf"`);
+        // For now, send as text (in production, use a PDF library like pdfkit or puppeteer)
+        res.send(pdfContent);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.downloadDocument = downloadDocument;

@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/auth';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { DocumentStatus } from '@/lib/types/document';
+import { RSVPStatus } from '@/lib/types/event';
 
 // Get status badge color
 const getStatusColor = (status: string) => {
@@ -86,8 +87,20 @@ export default function WargaDashboard() {
   
   const { documents, events, announcements } = dashboardData;
 
+  // Check if the user is verified
+  const isVerified = user?.resident?.isVerified;
+
   return (
     <div className="space-y-6">
+      {!isVerified && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+          <p className="font-bold">Akun Belum Terverifikasi</p>
+          <p>Akun Anda belum terverifikasi. Silakan unggah data KTP dan KK untuk verifikasi.</p>
+          <Link href="/dashboard/verifikasi" className="text-blue-500 hover:underline">
+            Verifikasi Sekarang
+          </Link>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <button 
@@ -294,14 +307,14 @@ export default function WargaDashboard() {
                     ) : (
                       <>
                         <button
-                          onClick={() => handleRsvp(event.id, 'AKAN_HADIR')}
+                          onClick={() => handleRsvp(event.id, RSVPStatus.AKAN_HADIR)}
                           className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                         >
                           <FiCheck className="mr-1.5 -ml-0.5 h-4 w-4" />
                           Hadir
                         </button>
                         <button
-                          onClick={() => handleRsvp(event.id, 'TIDAK_HADIR')}
+                          onClick={() => handleRsvp(event.id, RSVPStatus.TIDAK_HADIR)}
                           className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                           <FiX className="mr-1.5 -ml-0.5 h-4 w-4" />

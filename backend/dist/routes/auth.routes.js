@@ -40,6 +40,7 @@ const express_1 = __importDefault(require("express"));
 const authController = __importStar(require("../controllers/auth.controller"));
 const validation_middleware_1 = require("../middleware/validation.middleware");
 const auth_middleware_1 = require("../middleware/auth.middleware");
+const upload_middleware_1 = require("../middleware/upload.middleware");
 const auth_schema_1 = require("../schemas/auth.schema");
 const router = express_1.default.Router();
 // Public routes
@@ -49,6 +50,14 @@ router.post('/login', (0, validation_middleware_1.validateRequest)(auth_schema_1
 router.get('/profile', auth_middleware_1.authenticate, authController.getProfile);
 router.put('/profile', auth_middleware_1.authenticate, (0, validation_middleware_1.validateRequest)(auth_schema_1.updateProfileSchema), authController.updateProfile);
 router.put('/password', auth_middleware_1.authenticate, (0, validation_middleware_1.validateRequest)(auth_schema_1.changePasswordSchema), authController.changePassword);
+// Verification routes
+router.get('/rts', auth_middleware_1.authenticate, authController.getAvailableRTs);
+router.post('/verify-resident', auth_middleware_1.authenticate, (0, validation_middleware_1.validateRequest)(auth_schema_1.verifyResidentSchema), authController.verifyResident);
+// Route for uploading verification documents
+router.post('/upload-verification', auth_middleware_1.authenticate, (0, upload_middleware_1.uploadFields)([
+    { name: 'ktp', maxCount: 1 },
+    { name: 'kk', maxCount: 1 },
+]), authController.uploadVerificationDocuments);
 // Admin only routes
 router.post('/register-admin', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN']), (0, validation_middleware_1.validateRequest)(auth_schema_1.registerSchema), authController.register);
 exports.default = router;

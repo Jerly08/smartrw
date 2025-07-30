@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getResidentStatistics = exports.importResidents = exports.verifyResident = exports.deleteResident = exports.updateResident = exports.createResident = exports.getResidentById = exports.getAllResidents = void 0;
+exports.verifyResidentByRT = exports.getResidentsPendingVerification = exports.getResidentStatistics = exports.exportResidents = exports.importResidents = exports.verifyResident = exports.deleteResident = exports.updateResident = exports.createResident = exports.getResidentById = exports.getAllResidents = void 0;
 const client_1 = require("@prisma/client");
 const error_middleware_1 = require("../middleware/error.middleware");
 const helpers_1 = require("../utils/helpers");
@@ -361,6 +361,81 @@ const importResidents = (residents, currentUser) => __awaiter(void 0, void 0, vo
     return results;
 });
 exports.importResidents = importResidents;
+// Export residents to CSV
+const exportResidents = (params, currentUser) => __awaiter(void 0, void 0, void 0, function* () {
+    const { search, rtNumber, rwNumber } = params;
+    // Build where conditions
+    const whereConditions = {};
+    if (search) {
+        whereConditions.OR = [
+            { fullName: { contains: search } },
+            { nik: { contains: search } },
+            { noKK: { contains: search } },
+        ];
+    }
+    // Apply role-based filtering
+    if (currentUser.role === 'RT') {
+        // RT can only export residents in their RT
+        const rtResident = yield prisma.resident.findFirst({
+            where: { userId: currentUser.id },
+        });
+        if (!rtResident) {
+            throw new error_middleware_1.ApiError('RT profile not found', 404);
+        }
+        whereConditions.rtNumber = rtResident.rtNumber;
+        whereConditions.rwNumber = rtResident.rwNumber;
+    }
+    else if (currentUser.role === 'WARGA') {
+        // Warga can only export their own record and family members
+        const wargaResident = yield prisma.resident.findFirst({
+            where: { userId: currentUser.id },
+            include: { family: true },
+        });
+        if (!wargaResident) {
+            throw new error_middleware_1.ApiError('Resident profile not found', 404);
+        }
+        // If warga has family, they can export family members, otherwise just themselves
+        if (wargaResident.familyId) {
+            whereConditions.OR = [
+                { id: wargaResident.id },
+                { familyId: wargaResident.familyId },
+            ];
+        }
+        else {
+            whereConditions.id = wargaResident.id;
+        }
+    }
+    else {
+        // Admin and RW can export all residents
+        // Apply optional filters if provided
+        if (rtNumber) {
+            whereConditions.rtNumber = rtNumber;
+        }
+        if (rwNumber) {
+            whereConditions.rwNumber = rwNumber;
+        }
+    }
+    // Get all residents without pagination for export
+    const residents = yield prisma.resident.findMany({
+        where: whereConditions,
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true,
+                },
+            },
+            family: true,
+        },
+        orderBy: {
+            fullName: 'asc',
+        },
+    });
+    return residents;
+});
+exports.exportResidents = exportResidents;
 // Get resident statistics
 const getResidentStatistics = (currentUser) => __awaiter(void 0, void 0, void 0, function* () {
     let whereConditions = {};
@@ -506,6 +581,107 @@ function canAccessResident(residentId, currentUser) {
         return false;
     });
 }
+// Get residents pending verification for RT
+const getResidentsPendingVerification = (rtUserId) => __awaiter(void 0, void 0, void 0, function* () {
+    // First, get the RT user information
+    const rtUser = yield prisma.user.findUnique({
+        where: { id: rtUserId },
+        include: { resident: true },
+    });
+    if (!rtUser || rtUser.role !== 'RT') {
+        throw new error_middleware_1.ApiError('Only RT can access pending verifications', 403);
+    }
+    if (!rtUser.resident) {
+        throw new error_middleware_1.ApiError('RT profile not found', 404);
+    }
+    // Get residents in RT's area that are not verified yet
+    const residents = yield prisma.resident.findMany({
+        where: {
+            rtId: rtUser.resident.rtId,
+            isVerified: false,
+        },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                },
+            },
+            rt: {
+                select: {
+                    id: true,
+                    number: true,
+                    name: true,
+                },
+            },
+        },
+        orderBy: {
+            createdAt: 'desc',
+        },
+    });
+    return residents;
+});
+exports.getResidentsPendingVerification = getResidentsPendingVerification;
+// Verify resident by RT
+const verifyResidentByRT = (residentId, rtUserId) => __awaiter(void 0, void 0, void 0, function* () {
+    // Get RT user information
+    const rtUser = yield prisma.user.findUnique({
+        where: { id: rtUserId },
+        include: { resident: true },
+    });
+    if (!rtUser || rtUser.role !== 'RT') {
+        throw new error_middleware_1.ApiError('Only RT can verify residents', 403);
+    }
+    if (!rtUser.resident) {
+        throw new error_middleware_1.ApiError('RT profile not found', 404);
+    }
+    // Get the resident to be verified
+    const resident = yield prisma.resident.findUnique({
+        where: { id: residentId },
+        include: { rt: true },
+    });
+    if (!resident) {
+        throw new error_middleware_1.ApiError('Resident not found', 404);
+    }
+    // Check if RT user is authorized to verify this resident (same RT)
+    if (rtUser.resident.rtId !== resident.rtId) {
+        throw new error_middleware_1.ApiError('RT can only verify residents in their own RT area', 403);
+    }
+    // Check if RT information is available
+    if (!resident.rt) {
+        throw new error_middleware_1.ApiError('RT information not found for resident', 404);
+    }
+    // Update resident verification status
+    const updatedResident = yield prisma.resident.update({
+        where: { id: residentId },
+        data: {
+            isVerified: true,
+            verifiedBy: `RT ${resident.rt.number} - ${rtUser.name}`,
+            verifiedAt: new Date(),
+        },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                },
+            },
+            rt: {
+                select: {
+                    id: true,
+                    number: true,
+                    name: true,
+                },
+            },
+        },
+    });
+    return updatedResident;
+});
+exports.verifyResidentByRT = verifyResidentByRT;
 // Helper function to create notifications for RT users when new residents need verification
 function createResidentVerificationNotificationsForRT(resident) {
     return __awaiter(this, void 0, void 0, function* () {

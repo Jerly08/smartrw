@@ -235,7 +235,6 @@ export default function DocumentTemplatesPage() {
                         </button>
                         <button
                           onClick={() => handleDeleteTemplate(template.id)}
-                          className="text-red-600 hover:text-red-900"
                           title="Hapus"
                           disabled={template.isDefault}
                           className={`${template.isDefault ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:text-red-900'}`}

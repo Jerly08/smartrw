@@ -8,6 +8,37 @@ const router = express.Router();
 
 // Admin only routes
 router.get('/', authenticate, authorize(['ADMIN']), userController.getAllUsers);
+
+// RW management routes (Admin only) - Place these BEFORE parameterized routes
+router.post(
+  '/rw',
+  authenticate,
+  authorize(['ADMIN']),
+  userController.createRWUser
+);
+
+router.get(
+  '/rw',
+  authenticate,
+  authorize(['ADMIN']),
+  userController.getAllRWUsers
+);
+
+router.put(
+  '/rw/:id',
+  authenticate,
+  authorize(['ADMIN']),
+  userController.updateRWUser
+);
+
+router.delete(
+  '/rw/:id',
+  authenticate,
+  authorize(['ADMIN']),
+  userController.deleteRWUser
+);
+
+// Parameterized routes - Place these AFTER specific routes
 router.delete('/:id', authenticate, authorize(['ADMIN']), userController.deleteUser);
 router.put(
   '/:id/role',

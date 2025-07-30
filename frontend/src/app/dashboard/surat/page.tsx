@@ -86,7 +86,7 @@ export default function DocumentManagementPage() {
       } else if (status === DocumentStatus.SELESAI) {
         await documentApi.completeDocument(id);
       } else if (status === DocumentStatus.DIPROSES) {
-        await documentApi.updateDocumentStatus(id, status);
+        await documentApi.updateDocumentStatus(id, { status });
       }
       fetchDocuments();
       fetchStatistics();

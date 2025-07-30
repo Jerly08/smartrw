@@ -11,7 +11,7 @@ export async function GET(
     
     // Construct the backend URL
     // The backend serves static files at /uploads/... not /api/uploads/...
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/uploads/${path}`;
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/uploads/${path}`;
     
     console.log('Proxying request to:', backendUrl);
     

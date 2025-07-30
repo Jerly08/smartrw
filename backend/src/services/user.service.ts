@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import { ApiError } from '../middleware/error.middleware';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -214,6 +215,265 @@ export const deleteUser = async (userId: number) => {
 
   if (!existingUser) {
     throw new ApiError('User not found', 404);
+  }
+
+  // Delete user
+  await prisma.user.delete({
+    where: { id: userId },
+  });
+
+  return true;
+};
+
+// RW Management Functions
+
+// Create RW user (admin only)
+export const createRWUser = async (data: {
+  name: string;
+  email: string;
+  rwNumber: string;
+  phoneNumber?: string;
+  address?: string;
+}) => {
+  // Check if email is already in use
+  const existingUser = await prisma.user.findUnique({
+    where: { email: data.email },
+  });
+
+  if (existingUser) {
+    throw new ApiError('Email already in use', 400);
+  }
+
+  // Check if RW number is already assigned
+  const existingRWUser = await prisma.user.findFirst({
+    where: {
+      role: 'RW',
+      resident: {
+        rwNumber: data.rwNumber,
+      },
+    },
+  });
+
+  if (existingRWUser) {
+    throw new ApiError(`RW ${data.rwNumber} already has an assigned user`, 400);
+  }
+
+  // Generate credentials
+  const password = `RW${data.rwNumber}@2024`;
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  // Create user with RW role
+  const user = await prisma.user.create({
+    data: {
+      name: data.name,
+      email: data.email,
+      password: hashedPassword,
+      role: 'RW',
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // Create resident profile for RW user
+await prisma.resident.create({
+    data: {
+      fullName: data.name,
+      nik: `RW${data.rwNumber}000000000000`, // Placeholder NIK for RW user
+      noKK: `RW${data.rwNumber}0000000000000000`, // Placeholder KK for RW user
+      gender: 'LAKI_LAKI', // Default value
+      birthPlace: 'Unknown', // Placeholder value
+      birthDate: new Date('2000-01-01'), // Placeholder date
+      religion: 'ISLAM', // Default value
+      maritalStatus: 'BELUM_KAWIN', // Default value
+      address: data.address || `RW ${data.rwNumber}`,
+      phoneNumber: data.phoneNumber,
+      rtNumber: '000', // RW user is not assigned to specific RT
+      rwNumber: data.rwNumber,
+      familyRole: 'KEPALA_KELUARGA',
+      isVerified: true,
+      userId: user.id,
+    },
+  });
+
+  return {
+    user,
+    credentials: {
+      email: data.email,
+      password,
+    },
+  };
+};
+
+// Get all RW users (admin only)
+export const getAllRWUsers = async () => {
+  const rwUsers = await prisma.user.findMany({
+    where: {
+      role: 'RW',
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+      resident: {
+        select: {
+          id: true,
+          fullName: true,
+          rwNumber: true,
+          phoneNumber: true,
+          address: true,
+          isVerified: true,
+        },
+      },
+    },
+    orderBy: {
+      resident: {
+        rwNumber: 'asc',
+      },
+    },
+  });
+
+  return rwUsers;
+};
+
+// Update RW user (admin only)
+export const updateRWUser = async (
+  userId: number,
+  data: {
+    name?: string;
+    email?: string;
+    rwNumber?: string;
+    phoneNumber?: string;
+    address?: string;
+    isActive?: boolean;
+  }
+) => {
+  // Check if user exists and is RW role
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      id: userId,
+      role: 'RW',
+    },
+    include: {
+      resident: true,
+    },
+  });
+
+  if (!existingUser) {
+    throw new ApiError('RW user not found', 404);
+  }
+
+  // Check if email is already in use by another user
+  if (data.email && data.email !== existingUser.email) {
+    const emailExists = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (emailExists) {
+      throw new ApiError('Email already in use', 400);
+    }
+  }
+
+  // Check if RW number is already assigned to another user
+  if (data.rwNumber && data.rwNumber !== existingUser.resident?.rwNumber) {
+    const existingRWUser = await prisma.user.findFirst({
+      where: {
+        role: 'RW',
+        resident: {
+          rwNumber: data.rwNumber,
+        },
+        id: {
+          not: userId,
+        },
+      },
+    });
+
+    if (existingRWUser) {
+      throw new ApiError(`RW ${data.rwNumber} already has an assigned user`, 400);
+    }
+  }
+
+  // Update user
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: data.name,
+      email: data.email,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // Update resident profile if exists
+  if (existingUser.resident) {
+    await prisma.resident.update({
+      where: { id: existingUser.resident.id },
+      data: {
+        fullName: data.name || existingUser.resident.fullName,
+        rwNumber: data.rwNumber || existingUser.resident.rwNumber,
+        phoneNumber: data.phoneNumber !== undefined ? data.phoneNumber : existingUser.resident.phoneNumber,
+        address: data.address !== undefined ? data.address : existingUser.resident.address,
+        isVerified: data.isActive !== undefined ? data.isActive : existingUser.resident.isVerified,
+      },
+    });
+  }
+
+  // Get updated user with resident info
+  const userWithResident = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      resident: {
+        select: {
+          id: true,
+          fullName: true,
+          rwNumber: true,
+          phoneNumber: true,
+          address: true,
+          isVerified: true,
+        },
+      },
+    },
+  });
+
+  return userWithResident;
+};
+
+// Delete RW user (admin only)
+export const deleteRWUser = async (userId: number) => {
+  // Check if user exists and is RW role
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      id: userId,
+      role: 'RW',
+    },
+    include: {
+      resident: true,
+    },
+  });
+
+  if (!existingUser) {
+    throw new ApiError('RW user not found', 404);
+  }
+
+  // Delete resident profile first if exists
+  if (existingUser.resident) {
+    await prisma.resident.delete({
+      where: { id: existingUser.resident.id },
+    });
   }
 
   // Delete user

@@ -16,8 +16,8 @@ const validateRequest = (schema) => {
     return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             // Validate request against schema
-            // The schema expects { body: {...} } structure, so we wrap req.body
-            yield schema.parseAsync({ body: req.body });
+            // Validate req.body directly against the schema
+            yield schema.parseAsync(req.body);
             // If validation passes, continue
             return next();
         }

@@ -68,6 +68,7 @@ export interface DocumentFilter {
   type?: DocumentType;
   status?: DocumentStatus;
   rtNumber?: string;
+  requesterId?: number;
   startDate?: string;
   endDate?: string;
   search?: string;

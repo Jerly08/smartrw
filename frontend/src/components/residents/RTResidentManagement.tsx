@@ -32,9 +32,7 @@ export default function RTResidentManagement() {
     totalItems: 0,
     totalPages: 0,
   });
-  const [filters, setFilters] = useState<ResidentFilter>({
-    rtNumber: user?.rtNumber, // Pre-filter by RT number
-  });
+  const [filters, setFilters] = useState<ResidentFilter>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingResident, setEditingResident] = useState<Resident | null>(null);
@@ -46,7 +44,6 @@ export default function RTResidentManagement() {
     try {
       const data = await residentApi.getAllResidents({
         ...filters,
-        rtNumber: user?.rtNumber, // Always filter by RT number
         page: pagination.page,
         limit: pagination.limit,
       });
@@ -69,7 +66,7 @@ export default function RTResidentManagement() {
       const stats = await residentApi.getResidentStatistics();
       // Filter statistics for this RT only
       const rtStats = {
-        total: stats.byRT?.find((rt: any) => rt.rtNumber === user?.rtNumber)?.count || 0,
+        total: stats.total || 0,
         verifiedPercentage: calculateVerifiedPercentage(residents),
         maleCount: residents.filter(r => r.gender === Gender.LAKI_LAKI).length,
         femaleCount: residents.filter(r => r.gender === Gender.PEREMPUAN).length,
@@ -95,10 +92,8 @@ export default function RTResidentManagement() {
 
   // Initial data loading
   useEffect(() => {
-    if (user?.rtNumber) {
-      fetchResidents();
-    }
-  }, [pagination.page, pagination.limit, user?.rtNumber]);
+    fetchResidents();
+  }, [pagination.page, pagination.limit]);
 
   // Update statistics when residents change
   useEffect(() => {
@@ -113,7 +108,6 @@ export default function RTResidentManagement() {
     setFilters(prev => ({
       ...prev,
       [name]: value === '' ? undefined : value,
-      rtNumber: user?.rtNumber, // Always maintain RT filter
     }));
   };
 
@@ -123,9 +117,7 @@ export default function RTResidentManagement() {
   };
 
   const resetFilters = () => {
-    setFilters({
-      rtNumber: user?.rtNumber, // Keep RT filter
-    });
+    setFilters({});
     setPagination(prev => ({ ...prev, page: 1 }));
     fetchResidents();
   };
@@ -174,7 +166,7 @@ export default function RTResidentManagement() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">Data Warga RT {user?.rtNumber}</h1>
+        <h1 className="text-2xl font-semibold">Data Warga RT</h1>
       </div>
 
       {/* Statistics Cards */}
@@ -182,7 +174,7 @@ export default function RTResidentManagement() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm text-gray-600">Total Warga RT {user?.rtNumber}</h3>
+              <h3 className="text-sm text-gray-600">Total Warga RT</h3>
               <FiUsers className="h-5 w-5 text-blue-500" />
             </div>
             <p className="text-2xl font-bold">{statistics.total}</p>
@@ -305,7 +297,7 @@ export default function RTResidentManagement() {
 
       {/* Residents Table */}
       <div className="bg-white p-4 rounded-lg shadow overflow-hidden">
-        <h2 className="text-lg font-semibold mb-4">Data Warga RT {user?.rtNumber}</h2>
+        <h2 className="text-lg font-semibold mb-4">Data Warga RT</h2>
         
         {loading ? (
           <div className="flex items-center justify-center h-48">

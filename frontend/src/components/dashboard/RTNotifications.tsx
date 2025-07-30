@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 export default function RTNotifications() {
   const router = useRouter();
   const { notifications, loading, error, unreadCount, markAsRead } = useNotifications({ 
-    limit: 5,
     isRead: false
   });
   
@@ -100,7 +99,7 @@ export default function RTNotifications() {
       
       {notifications.length > 0 ? (
         <div className="space-y-3">
-          {notifications.map((notification) => {
+          {notifications.slice(0, 5).map((notification) => {
             // Parse JSON data if it exists
             let data = {};
             try {

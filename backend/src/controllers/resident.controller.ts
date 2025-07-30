@@ -330,6 +330,93 @@ export const getResidentStatistics = async (req: Request, res: Response, next: N
   }
 }; 
 
+// Get resident documents
+export const getResidentDocuments = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const residentId = parseInt(req.params.id);
+    
+    if (isNaN(residentId)) {
+      throw new ApiError('Invalid resident ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Get resident to get their NIK and noKK for file naming
+    const resident = await prisma.resident.findUnique({
+      where: { id: residentId }
+    });
+    
+    if (!resident) {
+      throw new ApiError('Resident not found', 404);
+    }
+    
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Check if files actually exist on disk
+    const uploadsPath = path.join(__dirname, '../../uploads/residents');
+    const ktpFilename = `ktp_${resident.nik}.jpg`;
+    const kkFilename = `kk_${resident.noKK}.jpg`;
+    const ktpPath = path.join(uploadsPath, ktpFilename);
+    const kkPath = path.join(uploadsPath, kkFilename);
+    
+    const documents = [];
+    
+    // Check KTP file
+    if (fs.existsSync(ktpPath)) {
+      documents.push({
+        id: 1,
+        type: 'KTP',
+        filename: ktpFilename,
+        uploadedAt: new Date().toISOString(),
+        status: 'uploaded',
+        fileUrl: `/api/uploads/residents/${ktpFilename}`
+      });
+    } else {
+      documents.push({
+        id: 1,
+        type: 'KTP',
+        filename: ktpFilename,
+        uploadedAt: null,
+        status: 'not_uploaded',
+        fileUrl: null
+      });
+    }
+    
+    // Check KK file
+    if (fs.existsSync(kkPath)) {
+      documents.push({
+        id: 2,
+        type: 'KK',
+        filename: kkFilename,
+        uploadedAt: new Date().toISOString(),
+        status: 'uploaded',
+        fileUrl: `/api/uploads/residents/${kkFilename}`
+      });
+    } else {
+      documents.push({
+        id: 2,
+        type: 'KK',
+        filename: kkFilename,
+        uploadedAt: null,
+        status: 'not_uploaded',
+        fileUrl: null
+      });
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        documents
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get resident's social assistance history
 export const getResidentSocialAssistance = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -365,4 +452,100 @@ export const getResidentSocialAssistance = async (req: Request, res: Response, n
   } catch (error) {
     next(error);
   }
-}; 
+};
+
+// Get residents pending verification for RT
+export const getPendingVerification = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    const rtUserId = req.user.id;
+    const residents = await residentService.getResidentsPendingVerification(rtUserId);
+    
+    res.status(200).json({
+      status: 'success',
+      data: residents,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Verify resident by RT
+export const verifyByRT = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    const residentId = parseInt(req.params.id);
+    
+    if (isNaN(residentId)) {
+      throw new ApiError('Invalid resident ID', 400);
+    }
+    
+    const rtUserId = req.user.id;
+    
+    const verifiedResident = await residentService.verifyResidentByRT(residentId, rtUserId);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Resident verified successfully',
+      data: verifiedResident,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Upload document for resident
+export const uploadResidentDocument = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const residentId = parseInt(req.params.id);
+    
+    if (isNaN(residentId)) {
+      throw new ApiError('Invalid resident ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    if (!req.file) {
+      throw new ApiError('No file uploaded', 400);
+    }
+    
+    // Get resident to ensure they exist
+    const resident = await prisma.resident.findUnique({
+      where: { id: residentId }
+    });
+    
+    if (!resident) {
+      throw new ApiError('Resident not found', 404);
+    }
+    
+    const { docType } = req.body;
+    
+    if (!docType || !['ktp', 'kk'].includes(docType.toLowerCase())) {
+      throw new ApiError('Document type is required and must be either "ktp" or "kk"', 400);
+    }
+    
+    // File was already saved by multer middleware with correct naming
+    const fileUrl = `/api/uploads/residents/${req.file.filename}`;
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Document uploaded successfully',
+      data: {
+        filename: req.file.filename,
+        fileUrl: fileUrl,
+        docType: docType,
+        uploadedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

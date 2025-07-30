@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'react-toastify';
-import { FiSearch, FiUserPlus, FiFilter, FiDownload, FiUpload, FiCheck, FiX, FiHome, FiEdit3, FiPlus } from 'react-icons/fi';
-import { residentApi, rtApi } from '@/lib/api';
+import { FiSearch, FiUserPlus, FiFilter, FiDownload, FiUpload, FiCheck, FiX, FiHome, FiEdit3, FiPlus, FiInfo } from 'react-icons/fi';
+import { residentApi, rtApi, rwApi } from '@/lib/api';
 import ResidentForm from '@/components/residents/ResidentForm';
 import { Resident } from '@/lib/types/resident';
 
@@ -68,7 +68,7 @@ const Button = React.forwardRef<HTMLButtonElement, {
   return (
     <button
       ref={ref}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${widthClass} ${className}`}
+      className={`${baseStyles} ${variants[variant as keyof typeof variants]} ${sizes[size as keyof typeof sizes]} ${widthClass} ${className}`}
       disabled={disabled || isLoading}
       {...props}
     >
@@ -88,9 +88,14 @@ const Button = React.forwardRef<HTMLButtonElement, {
 });
 Button.displayName = 'Button';
 
-// Inline Input component
-const Input = React.forwardRef(
-  ({ label, error, fullWidth = true, className = '', ...props }, ref) => {
+// Inline Input component with proper typing
+const Input = React.forwardRef<HTMLInputElement, {
+  label?: string;
+  error?: string;
+  fullWidth?: boolean;
+  className?: string;
+  [key: string]: any;
+}>(({ label, error, fullWidth = true, className = '', ...props }, ref) => {
     const inputClasses = `
       px-3 py-2 rounded-md border
       ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}
@@ -129,6 +134,175 @@ type RTItem = {
     residents: number;
     families: number;
   };
+};
+
+// RW Management component
+const RWManagement = ({ onClose }: { onClose: () => void }) => {
+  const [activeView, setActiveView] = useState<'list' | 'form'>('list');
+  const [editingRW, setEditingRW] = useState<RTItem | null>(null);
+  const [isRWFormLoading, setIsRWFormLoading] = useState(false);
+  const [rwList, setRwList] = useState<RTItem[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+
+  useEffect(() => {
+    fetchRWList();
+  }, []);
+
+  const fetchRWList = async () => {
+    setIsLoadingList(true);
+    try {
+      const result = await rwApi.getAllRWUsers();
+      setRwList(result.rwUsers || []);
+    } catch (error) {
+      console.error('Error fetching RW list:', error);
+    } finally {
+      setIsLoadingList(false);
+    }
+  };
+
+  const handleRWSubmit = async (data: any) => {
+    setIsRWFormLoading(true);
+    try {
+      if (editingRW) {
+        // Update existing RW
+        await rwApi.updateRWUser(editingRW.id, data);
+        toast.success('RW berhasil diperbarui');
+      } else {
+        // Create new RW
+        const result = await rwApi.createRWUser(data);
+
+        if (result.credentials) {
+          toast.success(
+            `RW berhasil ditambahkan!\n\nAkun Login RW:\nEmail: ${result.credentials.email}\nPassword: ${result.credentials.password}\n\nSimpan informasi ini dengan aman.`
+          );
+        } else {
+          toast.success('RW berhasil ditambahkan');
+        }
+      }
+
+      // Refresh RW list
+      await fetchRWList();
+
+      // Go back to list view
+      setActiveView('list');
+      setEditingRW(null);
+    } catch (error: any) {
+      console.error('Error saving RW:', error);
+      toast.error('Tidak bisa menyimpan RW');
+    } finally {
+      setIsRWFormLoading(false);
+    }
+  };
+
+  const handleRWCancel = () => {
+    setActiveView('list');
+    setEditingRW(null);
+  };
+
+  const handleAddRW = () => {
+    setEditingRW(null);
+    setActiveView('form');
+  };
+
+  const handleEditRW = (rw: RTItem) => {
+    setEditingRW(rw);
+    setActiveView('form');
+  };
+
+  const handleDeleteRW = async (rw: RTItem) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus RW ${rw.number}?`)) {
+      try {
+        await rwApi.deleteRWUser(rw.id);
+        toast.success('RW berhasil dihapus');
+        await fetchRWList();
+      } catch (error) {
+        console.error('Error deleting RW:', error);
+        toast.error('Gagal menghapus RW');
+      }
+    }
+  };
+
+  if (activeView === 'form') {
+    return (
+      <RWForm
+        rw={editingRW}
+        onSubmit={handleRWSubmit}
+        onCancel={handleRWCancel}
+        isLoading={isRWFormLoading}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Daftar RW</h3>
+        <Button onClick={handleAddRW}>
+          <FiPlus className="mr-2 h-4 w-4" />
+          Tambah RW
+        </Button>
+      </div>
+
+      {isLoadingList ? (
+        <div className="flex justify-center items-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : rwList.length > 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nomor RW</TableHead>
+                <TableHead>Nama RW</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rwList.map(rw => (
+                <TableRow key={rw.id}>
+                  <TableCell className="font-medium">RW {rw.number}</TableCell>
+                  <TableCell>{rw.name || '-'}</TableCell>
+                  <TableCell>{rw.isActive ? 'Aktif' : 'Tidak Aktif'}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditRW(rw)}>
+                      <FiEdit3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDeleteRW(rw)}
+                    >
+                      <FiX className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="text-center p-8 text-gray-500">
+          <div className="mb-4">
+            <FiHome className="mx-auto h-12 w-12 text-gray-300" />
+          </div>
+          <p className="mb-2">Belum ada RW yang terdaftar</p>
+          <p className="text-sm mb-4">Mulai dengan menambahkan RW pertama</p>
+          <Button onClick={handleAddRW}>
+            <FiPlus className="mr-2 h-4 w-4" />
+            Tambah RW
+          </Button>
+        </div>
+      )}
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>
+          Tutup
+        </Button>
+      </DialogFooter>
+    </div>
+  );
 };
 
 // RT Management component
@@ -198,7 +372,7 @@ const RTManagement = ({ onClose }: { onClose: () => void }) => {
       // Go back to list view
       setActiveView('list');
       setEditingRT(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving RT:', error);
       
       // Enhanced error handling to show backend validation messages
@@ -221,7 +395,7 @@ const RTManagement = ({ onClose }: { onClose: () => void }) => {
             errorMessage = error.response.data.error;
           } else if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
             // Backend validation errors array
-            const validationErrors = error.response.data.errors.map(err => {
+            const validationErrors = error.response.data.errors.map((err: any) => {
               if (typeof err === 'string') {
                 return err;
               } else if (err.message) {
@@ -234,7 +408,7 @@ const RTManagement = ({ onClose }: { onClose: () => void }) => {
             errorMessage = `Validation errors:\n${validationErrors}`;
           } else if (error.response.data.issues) {
             // Zod validation errors
-            const issues = error.response.data.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('\n');
+            const issues = error.response.data.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join('\n');
             errorMessage = `Validation errors:\n${issues}`;
           }
         } else if (error.response.status === 401) {
@@ -380,6 +554,157 @@ const RTManagement = ({ onClose }: { onClose: () => void }) => {
 };
 
 // RT Form component
+// RW Form component
+const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
+  rw?: RTItem | null;
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+}) => {
+  const [formData, setFormData] = useState({
+    name: rw?.name || '',
+    email: rw?.email || '',
+    rwNumber: rw?.number || '',
+    phoneNumber: rw?.phoneNumber || '',
+    address: rw?.address || '',
+    isActive: rw?.isActive ?? true,
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newErrors: Record<string, string> = {};
+    
+    // Name validation - required
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nama RW wajib diisi';
+    }
+    
+    // Email validation - required
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email wajib diisi';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Format email tidak valid';
+    }
+    
+    // RW Number validation - required
+    if (!formData.rwNumber.trim()) {
+      newErrors.rwNumber = 'Nomor RW wajib diisi';
+    }
+    
+    // Phone number validation - optional
+    if (formData.phoneNumber.trim() && !/^(\+62|62|0)8[1-9][0-9]{6,9}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = 'Format nomor telepon tidak valid (contoh: 08123456789)';
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length === 0) {
+      const cleanData = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        rwNumber: formData.rwNumber.trim(),
+        phoneNumber: formData.phoneNumber.trim() || undefined,
+        address: formData.address.trim() || undefined,
+        isActive: formData.isActive
+      };
+      
+      onSubmit(cleanData);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Input
+        label="Nama RW *"
+        placeholder="Nama Lengkap RW"
+        value={formData.name}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('name', e.target.value)}
+        error={errors.name}
+      />
+      
+      <Input
+        label="Email *"
+        type="email"
+        placeholder="rw@example.com"
+        value={formData.email}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('email', e.target.value)}
+        error={errors.email}
+      />
+      
+      <Input
+        label="Nomor RW *"
+        placeholder="001"
+        value={formData.rwNumber}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('rwNumber', e.target.value)}
+        error={errors.rwNumber}
+      />
+      
+      <Input
+        label="Nomor Telepon"
+        placeholder="08123456789"
+        value={formData.phoneNumber}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('phoneNumber', e.target.value)}
+        error={errors.phoneNumber}
+      />
+      
+      <Input
+        label="Alamat"
+        placeholder="Alamat RW"
+        value={formData.address}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('address', e.target.value)}
+        error={errors.address}
+      />
+      
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="isActive"
+          checked={formData.isActive}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('isActive', e.target.checked)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+          RW Aktif
+        </label>
+      </div>
+      
+      {/* Credentials Information */}
+      {!rw && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-blue-900 mb-2">📝 Informasi Login RW</h4>
+          <div className="text-sm text-blue-800 space-y-1">
+            <p><strong>Email:</strong> {formData.email || 'email@example.com'}</p>
+            <p><strong>Password:</strong> RW{formData.rwNumber || 'XXX'}@2024</p>
+            <div className="mt-2 text-xs text-blue-700 bg-blue-100 p-2 rounded">
+              ℹ️ <strong>Catatan:</strong> Setelah RW dibuat, akun login akan otomatis dibuat dengan kredensial di atas. 
+              RW dapat login ke sistem menggunakan email dan password ini untuk mengakses dashboard khusus RW.
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          Batal
+        </Button>
+        <Button type="submit" isLoading={isLoading}>
+          {rw ? 'Update RW' : 'Tambah RW'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+};
+
 const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
   rt?: RTItem | null;
   onSubmit: (data: any) => void;
@@ -459,8 +784,8 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
       
       // Remove empty optional fields to avoid sending empty strings
       Object.keys(cleanData).forEach(key => {
-        if (cleanData[key] === undefined || cleanData[key] === '') {
-          delete cleanData[key];
+        if (cleanData[key as keyof typeof cleanData] === undefined || cleanData[key as keyof typeof cleanData] === '') {
+          delete cleanData[key as keyof typeof cleanData];
         }
       });
       
@@ -481,7 +806,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         label="Nomor RT *"
         placeholder="001"
         value={formData.number}
-        onChange={(e) => handleInputChange('number', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('number', e.target.value)}
         error={errors.number}
         maxLength={3}
       />
@@ -490,7 +815,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         label="Nama RT"
         placeholder="RT Mawar Indah"
         value={formData.name}
-        onChange={(e) => handleInputChange('name', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('name', e.target.value)}
         error={errors.name}
       />
       
@@ -505,7 +830,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
           rows={3}
           placeholder="Deskripsi RT..."
           value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('description', e.target.value)}
         />
         {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
       </div>
@@ -514,7 +839,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         label="Alamat"
         placeholder="Jl. Mawar No. 1-50"
         value={formData.address}
-        onChange={(e) => handleInputChange('address', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('address', e.target.value)}
         error={errors.address}
       />
       
@@ -522,7 +847,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         label="Ketua RT"
         placeholder="Nama Ketua RT"
         value={formData.chairperson}
-        onChange={(e) => handleInputChange('chairperson', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('chairperson', e.target.value)}
         error={errors.chairperson}
       />
       
@@ -530,7 +855,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         label="Nomor Telepon"
         placeholder="08123456789"
         value={formData.phoneNumber}
-        onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('phoneNumber', e.target.value)}
         error={errors.phoneNumber}
       />
       
@@ -539,7 +864,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         type="email"
         placeholder="rt001@example.com"
         value={formData.email}
-        onChange={(e) => handleInputChange('email', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('email', e.target.value)}
         error={errors.email}
       />
       
@@ -548,7 +873,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
           type="checkbox"
           id="isActive"
           checked={formData.isActive}
-          onChange={(e) => handleInputChange('isActive', e.target.checked)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('isActive', e.target.checked)}
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
         <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
@@ -587,12 +912,44 @@ export default function WargaManagementPage() {
   const { user } = useAuth();
   const [residents, setResidents] = useState<Resident[]>([]);
   const [filteredResidents, setFilteredResidents] = useState<Resident[]>([]);
+  const [pendingVerifications, setPendingVerifications] = useState<Resident[]>([]);
+  const [isLoadingVerifications, setIsLoadingVerifications] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [rtList, setRtList] = useState<RTItem[]>([]);
   const [selectedRt, setSelectedRt] = useState('all');
+  const [rtList, setRtList] = useState<RTItem[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setIsLoadingVerifications(true);
+
+        // Get all residents
+        const residentResponse = await residentApi.getAllResidents({ limit: 1000 });
+        setResidents(residentResponse.residents || []);
+
+        // If user is RT, get pending verifications
+        if (user?.role === 'RT') {
+          const pending = await residentApi.getPendingVerification();
+          setPendingVerifications(pending);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Gagal memuat data warga');
+      } finally {
+        setIsLoading(false);
+        setIsLoadingVerifications(false);
+      }
+    };
+
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
   
   // RT management states
   const [isRTModalOpen, setIsRTModalOpen] = useState(false);
@@ -600,36 +957,87 @@ export default function WargaManagementPage() {
   const [editingRT, setEditingRT] = useState<RTItem | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   
+  // Management modal state (for both RW and RT management)
+  const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
+  
   // Detail modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
   const [familyMembers, setFamilyMembers] = useState<Resident[]>([]);
   const [isFamilyLoading, setIsFamilyLoading] = useState(false);
 
-  // Fetch real data for residents and RT list
+  // Document verification modal states
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+  const [selectedResidentForDocs, setSelectedResidentForDocs] = useState<Resident | null>(null);
+  const [residentDocuments, setResidentDocuments] = useState<any[]>([]);
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
+
+  // Fetch data based on user role
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const residentResponse = await residentApi.getAllResidents({
-          page: 1,
-          limit: 100
-        });
+        if (user?.role === 'ADMIN') {
+          // ADMIN sees RW data only
+          const rwResponse = await rwApi.getAllRWUsers();
+          const transformedRWData = (rwResponse.rwUsers || []).map((rw: any) => ({
+            id: rw.id,
+            fullName: rw.name,
+            nik: `RW${rw.number}000000000000`,
+            noKK: `RW${rw.number}0000000000000000`,
+            address: rw.address || `RW ${rw.number}`,
+            rtNumber: rw.number,
+            rwNumber: rw.number,
+            familyRole: 'KEPALA_KELUARGA',
+            isVerified: rw.isActive ?? true,
+            phoneNumber: rw.phoneNumber || '',
+            email: rw.email || ''
+          }));
+          setResidents(transformedRWData);
+          setFilteredResidents(transformedRWData);
+        } else if (user?.role === 'RW') {
+          // RW sees RT data only
+          const rtResponse = await rtApi.getAllRTs({ limit: 50 });
+          const transformedRTData = (rtResponse.rts || []).map((rt: any) => ({
+            id: rt.id,
+            fullName: rt.name || `Ketua RT ${rt.number}`,
+            nik: `RT${rt.number}000000000000`,
+            noKK: `RT${rt.number}000000000000`,
+            address: rt.address || `RT ${rt.number}`,
+            rtNumber: rt.number,
+            rwNumber: '000', // Default for RT
+            familyRole: 'KEPALA_KELUARGA',
+            isVerified: rt.isActive ?? true,
+            phoneNumber: rt.phoneNumber || '',
+            email: rt.email || ''
+          }));
+          setResidents(transformedRTData);
+          setFilteredResidents(transformedRTData);
+        } else {
+          // Other roles see regular resident data
+          const residentResponse = await residentApi.getAllResidents({
+            page: 1,
+            limit: 100
+          });
+          setResidents(residentResponse.residents || []);
+          setFilteredResidents(residentResponse.residents || []);
+        }
         
-        // Fetch RT list using API with fallback
-        await fetchRTList();
-        
-        setResidents(residentResponse.residents || []);
-        setFilteredResidents(residentResponse.residents || []);
+        // Fetch RT list for filtering (only needed for non-ADMIN roles)
+        if (user?.role !== 'ADMIN') {
+          await fetchRTList();
+        }
       } catch (error) {
-        console.error('Error fetching residents:', error);
-        toast.error('Gagal memuat data warga');
+        console.error('Error fetching data:', error);
+        toast.error('Gagal memuat data');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   // Filter residents based on search term, status, selected RT, and active tab
   useEffect(() => {
@@ -667,15 +1075,41 @@ export default function WargaManagementPage() {
     setFilteredResidents(filtered);
   }, [searchTerm, statusFilter, selectedRt, activeTab, residents]);
 
-  const handleVerifyResident = (id: number, verify: boolean) => {
-    // In a real application, this would be an API call
-    setResidents(prevResidents => 
-      prevResidents.map(resident => 
-        resident.id === id ? { ...resident, isVerified: verify } : resident
-      )
-    );
-    
-    toast.success(`Data warga berhasil ${verify ? 'diverifikasi' : 'dibatalkan verifikasi'}`);
+  const handleVerifyResident = async (id: number, verify: boolean) => {
+    try {
+      if (user?.role === 'RT' && verify) {
+        // Use RT-specific verification endpoint
+        await residentApi.verifyResidentByRT(id);
+        
+        // Update local state
+        setResidents(prevResidents => 
+          prevResidents.map(resident => 
+            resident.id === id ? { ...resident, isVerified: true } : resident
+          )
+        );
+        
+        // Also update pending verifications list
+        setPendingVerifications(prev => prev.filter(resident => resident.id !== id));
+        
+        toast.success('Warga berhasil diverifikasi!');
+      } else {
+        // Use regular verification endpoint for other roles
+        if (verify) {
+          await residentApi.verifyResident(id);
+        }
+        
+        setResidents(prevResidents => 
+          prevResidents.map(resident => 
+            resident.id === id ? { ...resident, isVerified: verify } : resident
+          )
+        );
+        
+        toast.success(`Data warga berhasil ${verify ? 'diverifikasi' : 'dibatalkan verifikasi'}`);
+      }
+    } catch (error) {
+      console.error('Error verifying resident:', error);
+      toast.error('Gagal memproses verifikasi warga');
+    }
   };
 
   const handleAddResidentSubmit = async () => {
@@ -810,17 +1244,105 @@ export default function WargaManagementPage() {
     setIsRTModalOpen(true);
   };
 
+  // Document verification modal functions
+  const openDocumentModal = async (resident: Resident) => {
+    setSelectedResidentForDocs(resident);
+    setIsDocumentModalOpen(true);
+    setIsDocumentsLoading(true);
+    
+    // Reset documents first
+    setResidentDocuments([]);
+
+    try {
+      // Fetch real documents from API instead of using mock data
+      try {
+        const documents = await residentApi.getResidentDocuments(resident.id);
+        setResidentDocuments(documents || []);
+      } catch (error) {
+        // If API fails, show only KTP and KK documents without selfie
+        const mockDocuments = [
+          {
+            id: 1,
+            type: 'KTP',
+            filename: 'ktp_' + resident.nik + '.jpg',
+            uploadedAt: new Date().toISOString(),
+            status: 'pending',
+            fileUrl: `/api/uploads/residents/ktp_${resident.nik}.jpg`
+          },
+          {
+            id: 2,
+            type: 'KK',
+            filename: 'kk_' + resident.noKK + '.jpg',
+            uploadedAt: new Date().toISOString(),
+            status: 'pending',
+            fileUrl: `/api/uploads/residents/kk_${resident.noKK}.jpg`
+          }
+        ];
+        setResidentDocuments(mockDocuments);
+      }
+
+      setIsDocumentsLoading(false);
+      
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      toast.error('Gagal memuat dokumen warga');
+      setResidentDocuments([]);
+      setIsDocumentsLoading(false);
+    }
+  };
+
+  const closeDocumentModal = () => {
+    setIsDocumentModalOpen(false);
+    setSelectedResidentForDocs(null);
+    setResidentDocuments([]);
+  };
+
+  // Handle document viewing function
+  const handleViewDocument = async (doc: any) => {
+    try {
+      // Try to fetch the actual document from the API
+      const response = await fetch(doc.fileUrl);
+      
+      if (response.ok) {
+        // If document exists, open it in a new tab
+        window.open(doc.fileUrl, '_blank');
+      } else {
+        throw new Error('Document not found');
+      }
+    } catch (error) {
+      console.error('Error viewing document:', error);
+      toast.error(`Dokumen ${doc.type} tidak dapat ditampilkan. File mungkin belum diunggah atau tidak tersedia.`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Manajemen Data Warga</h1>
         
         <div className="flex space-x-2">
-          {/* RT Management - Only for RW and ADMIN roles */}
-          {(user?.role === 'RW' || user?.role === 'ADMIN') && (
-            <Dialog open={isRTModalOpen} onOpenChange={setIsRTModalOpen}>
+{/* RW Management - Only for ADMIN role */}
+          {user?.role === 'ADMIN' && (
+            <Dialog open={isManagementModalOpen} onOpenChange={setIsManagementModalOpen}>
               <DialogTrigger asChild>
-                <Button variant="secondary" onClick={openAddRTModal}>
+                <Button variant="secondary" onClick={() => setIsManagementModalOpen(true)}>
+                  <FiUserPlus className="mr-2 h-4 w-4" />
+                  Kelola RW
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Manajemen RW</DialogTitle>
+                </DialogHeader>
+                <RWManagement onClose={() => setIsManagementModalOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {user?.role === 'RW' && (
+            <Dialog open={isManagementModalOpen} onOpenChange={setIsManagementModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary" onClick={() => setIsManagementModalOpen(true)}>
                   <FiHome className="mr-2 h-4 w-4" />
                   Kelola RT
                 </Button>
@@ -829,7 +1351,7 @@ export default function WargaManagementPage() {
                 <DialogHeader>
                   <DialogTitle>Manajemen RT</DialogTitle>
                 </DialogHeader>
-                <RTManagement onClose={() => setIsRTModalOpen(false)} />
+                <RTManagement onClose={() => setIsManagementModalOpen(false)} />
               </DialogContent>
             </Dialog>
           )}
@@ -858,7 +1380,7 @@ export default function WargaManagementPage() {
                 placeholder="Cari nama, NIK, atau No. KK..."
                 className="pl-10"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="flex gap-2">
@@ -886,12 +1408,95 @@ export default function WargaManagementPage() {
             </div>
           </div>
           
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+          <Tabs defaultValue={user?.role === 'RT' ? 'pending-verification' : 'all'} value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
+              {user?.role === 'RT' && (
+                <TabsTrigger value="pending-verification">
+                  Perlu Verifikasi ({pendingVerifications.length})
+                </TabsTrigger>
+              )}
               <TabsTrigger value="all">Semua</TabsTrigger>
               <TabsTrigger value="kepala-keluarga">Kepala Keluarga</TabsTrigger>
               <TabsTrigger value="anggota-keluarga">Anggota Keluarga</TabsTrigger>
             </TabsList>
+            
+            {/* Tab for RT Pending Verifications */}
+            {user?.role === 'RT' && (
+              <TabsContent value="pending-verification">
+                {isLoadingVerifications ? (
+                  <div className="flex justify-center items-center p-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : pendingVerifications.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-orange-900 mb-2">⚠️ Verifikasi Diperlukan</h3>
+                      <p className="text-sm text-orange-800">
+                        Berikut adalah {pendingVerifications.length} warga yang memerlukan verifikasi RT. 
+                        Silakan periksa data mereka dan klik "Verifikasi" jika data sudah sesuai.
+                      </p>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nama</TableHead>
+                            <TableHead>NIK</TableHead>
+                            <TableHead>Alamat</TableHead>
+                            <TableHead>Tanggal Daftar</TableHead>
+                            <TableHead className="text-right">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingVerifications.map((resident) => (
+                            <TableRow key={resident.id}>
+                              <TableCell className="font-medium">{resident.fullName}</TableCell>
+                              <TableCell>{resident.nik}</TableCell>
+                              <TableCell>{resident.address}</TableCell>
+                              <TableCell>
+                                {resident.createdAt ? new Date(resident.createdAt).toLocaleDateString('id-ID') : '-'}
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button variant="ghost" size="sm" onClick={() => openDetailModal(resident)}>
+                                  Detail
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-blue-600 hover:text-blue-700"
+                                  onClick={() => openDocumentModal(resident)}
+                                >
+                                  <FiInfo className="mr-1 h-4 w-4" />
+                                  Info
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="text-green-600 border-green-600 hover:bg-green-50"
+                                  onClick={() => handleVerifyResident(resident.id, true)}
+                                >
+                                  <FiCheck className="mr-1 h-4 w-4" />
+                                  Verifikasi
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-8 text-gray-500">
+                    <div className="mb-4">
+                      <FiCheck className="mx-auto h-12 w-12 text-green-300" />
+                    </div>
+                    <p className="mb-2">Tidak ada warga yang perlu diverifikasi</p>
+                    <p className="text-sm">Semua warga di RT Anda sudah terverifikasi</p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
             
             <TabsContent value="all">
               {isLoading ? (
@@ -920,14 +1525,29 @@ export default function WargaManagementPage() {
                           <TableCell>{resident.address}</TableCell>
                           <TableCell>
                             {resident.isVerified ? (
-                              <Badge variant="success" className="bg-green-100 text-green-800">Terverifikasi</Badge>
+                              <div className="space-y-1">
+                                <Badge variant="success" className="bg-green-100 text-green-800">Terverifikasi</Badge>
+                                <p className="text-xs text-gray-500">Dokumen lengkap</p>
+                              </div>
                             ) : (
-                              <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Belum Terverifikasi</Badge>
+                              <div className="space-y-1">
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Belum Terverifikasi</Badge>
+                                <p className="text-xs text-gray-500">Menunggu upload dokumen</p>
+                              </div>
                             )}
                           </TableCell>
                           <TableCell className="text-right space-x-2">
                             <Button variant="ghost" size="sm" onClick={() => openDetailModal(resident)}>
                               Detail
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700"
+                              onClick={() => openDocumentModal(resident)}
+                            >
+                              <FiInfo className="mr-1 h-4 w-4" />
+                              Info
                             </Button>
                             {!resident.isVerified ? (
                               <Button 
@@ -999,6 +1619,15 @@ export default function WargaManagementPage() {
                             <Button variant="ghost" size="sm" onClick={() => openDetailModal(resident)}>
                               Detail
                             </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700"
+                              onClick={() => openDocumentModal(resident)}
+                            >
+                              <FiInfo className="mr-1 h-4 w-4" />
+                              Info
+                            </Button>
                             {!resident.isVerified ? (
                               <Button 
                                 variant="outline" 
@@ -1068,6 +1697,15 @@ export default function WargaManagementPage() {
                           <TableCell className="text-right space-x-2">
                             <Button variant="ghost" size="sm" onClick={() => openDetailModal(resident)}>
                               Detail
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700"
+                              onClick={() => openDocumentModal(resident)}
+                            >
+                              <FiInfo className="mr-1 h-4 w-4" />
+                              Info
                             </Button>
                             {!resident.isVerified ? (
                               <Button 
@@ -1154,10 +1792,6 @@ export default function WargaManagementPage() {
                                 {member.familyRole === 'KEPALA_KELUARGA' ? 'Kepala Keluarga' :
                                  member.familyRole === 'ISTRI' ? 'Istri' :
                                  member.familyRole === 'ANAK' ? 'Anak' :
-                                 member.familyRole === 'ORANG_TUA' ? 'Orang Tua' :
-                                 member.familyRole === 'MERTUA' ? 'Mertua' :
-                                 member.familyRole === 'CUCU' ? 'Cucu' :
-                                 member.familyRole === 'KEPONAKAN' ? 'Keponakan' :
                                  'Lainnya'}
                               </Badge>
                             </TableCell>
@@ -1181,6 +1815,75 @@ export default function WargaManagementPage() {
           ) : null}
           <DialogFooter>
             <Button onClick={closeDetailModal}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Verification Modal */}
+      <Dialog open={isDocumentModalOpen} onOpenChange={setIsDocumentModalOpen}>
+        <DialogContent className="sm:max-w-[700px]" aria-describedby="document-modal-description">
+          <DialogHeader>
+            <DialogTitle>Dokumen Verifikasi Warga</DialogTitle>
+          </DialogHeader>
+          <div id="document-modal-description" className="sr-only">
+            Modal untuk menampilkan dokumen verifikasi warga
+          </div>
+          {isDocumentsLoading ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : selectedResidentForDocs ? (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">Informasi Warga</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="font-medium">Nama:</span> {selectedResidentForDocs.fullName}</div>
+                  <div><span className="font-medium">NIK:</span> {selectedResidentForDocs.nik}</div>
+                  <div><span className="font-medium">No. KK:</span> {selectedResidentForDocs.noKK}</div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-md font-semibold mb-3">Dokumen Terlampir</h4>
+                {residentDocuments.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Jenis Dokumen</TableHead>
+                          <TableHead>Nama File</TableHead>
+                          <TableHead>Tanggal Upload</TableHead>
+                          <TableHead>Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {residentDocuments.map(doc => (
+                          <TableRow key={doc.id}>
+                            <TableCell className="font-medium">{doc.type}</TableCell>
+                            <TableCell>{doc.filename}</TableCell>
+                            <TableCell>{new Date(doc.uploadedAt).toLocaleDateString('id-ID')}</TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleViewDocument(doc)}
+                              >
+                                Lihat Dokumen
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-center p-4 text-gray-500">Tidak ada dokumen terlampir.</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button onClick={closeDocumentModal}>Tutup</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

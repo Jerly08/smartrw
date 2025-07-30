@@ -42,7 +42,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.getRTListForRW = exports.linkUserToResident = exports.updateUserRole = exports.updateUser = exports.getUserById = exports.getAllUsers = void 0;
+exports.deleteRWUser = exports.updateRWUser = exports.getAllRWUsers = exports.createRWUser = exports.deleteUser = exports.getRTListForRW = exports.linkUserToResident = exports.updateUserRole = exports.updateUser = exports.getUserById = exports.getAllUsers = void 0;
 const userService = __importStar(require("../services/user.service"));
 const error_middleware_1 = require("../middleware/error.middleware");
 // Get all users (admin only)
@@ -184,3 +184,86 @@ const deleteUser = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.deleteUser = deleteUser;
+// RW management functions
+// Create RW user (admin only)
+const createRWUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { name, email, rwNumber, phoneNumber, address } = req.body;
+        const rwUser = yield userService.createRWUser({
+            name,
+            email,
+            rwNumber,
+            phoneNumber,
+            address
+        });
+        res.status(201).json({
+            status: 'success',
+            message: 'RW user created successfully',
+            data: { user: rwUser.user, credentials: rwUser.credentials },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.createRWUser = createRWUser;
+// Get all RW users (admin only)
+const getAllRWUsers = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const rwUsers = yield userService.getAllRWUsers();
+        res.status(200).json({
+            status: 'success',
+            results: rwUsers.length,
+            data: { rwUsers },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getAllRWUsers = getAllRWUsers;
+// Update RW user (admin only)
+const updateRWUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = parseInt(req.params.id);
+        if (isNaN(userId)) {
+            throw new error_middleware_1.ApiError('Invalid user ID', 400);
+        }
+        const { name, email, rwNumber, phoneNumber, address, isActive } = req.body;
+        const updatedUser = yield userService.updateRWUser(userId, {
+            name,
+            email,
+            rwNumber,
+            phoneNumber,
+            address,
+            isActive
+        });
+        res.status(200).json({
+            status: 'success',
+            message: 'RW user updated successfully',
+            data: { user: updatedUser },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.updateRWUser = updateRWUser;
+// Delete RW user (admin only)
+const deleteRWUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = parseInt(req.params.id);
+        if (isNaN(userId)) {
+            throw new error_middleware_1.ApiError('Invalid user ID', 400);
+        }
+        yield userService.deleteRWUser(userId);
+        res.status(200).json({
+            status: 'success',
+            message: 'RW user deleted successfully',
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.deleteRWUser = deleteRWUser;
