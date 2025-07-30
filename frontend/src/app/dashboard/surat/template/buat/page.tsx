@@ -10,10 +10,10 @@ import { z } from 'zod';
 import { useAuth } from '@/lib/auth';
 import { DocumentType, documentTypeOptions } from '@/lib/types/document';
 import { FiSave, FiX, FiAlertCircle } from 'react-icons/fi';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 
 // Dynamically import the editor to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = nextDynamic(() => import('react-quill'), { ssr: false });
 import 'react-quill/dist/quill.snow.css';
 
 // Form schema
