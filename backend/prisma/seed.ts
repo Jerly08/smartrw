@@ -1,5 +1,6 @@
-import { PrismaClient, Role } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+// --- PATCHED SEED UNTUK PRODUKSI TANPA MASALAH TYPES ---
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
@@ -74,7 +75,7 @@ async function main() {
       name: 'Admin Smart RW',
       email: 'admin@smartrw.com',
       password: await hashPassword('admin123456'),
-      role: Role.ADMIN,
+      role: 'ADMIN',
     }
   });
   console.log('Created Admin user:', adminUser.email);
@@ -85,7 +86,7 @@ async function main() {
       name: 'Ketua RW',
       email: 'rw@smartrw.com',
       password: await hashPassword('rw123456'),
-      role: Role.RW,
+      role: 'RW',
       resident: {
         create: {
           nik: '3201015005780001',
@@ -121,7 +122,7 @@ async function main() {
       name: 'Ketua RT 001',
       email: 'rt001@smartrw.com',
       password: await hashPassword('rt123456'),
-      role: Role.RT,
+      role: 'RT',
       resident: {
         create: {
           nik: '3201011505800002',
@@ -164,7 +165,7 @@ async function main() {
       name: 'Ketua RT 002',
       email: 'rt002@smartrw.com',
       password: await hashPassword('rt123456'),
-      role: Role.RT,
+      role: 'RT',
       resident: {
         create: {
           nik: '3201012006820003',
@@ -208,7 +209,7 @@ async function main() {
       name: 'Warga RT 001',
       email: 'warga001@smartrw.com',
       password: await hashPassword('warga123456'),
-      role: Role.WARGA,
+      role: 'WARGA',
       resident: {
         create: {
           nik: '3201017107850004',
@@ -244,7 +245,7 @@ async function main() {
       name: 'Warga RT 002',
       email: 'warga002@smartrw.com',
       password: await hashPassword('warga123456'),
-      role: Role.WARGA,
+      role: 'WARGA',
       resident: {
         create: {
           nik: '3201015208830005',
@@ -281,7 +282,7 @@ async function main() {
       name: 'Rizki Hidayat',
       email: 'rizki@example.com',
       password: await hashPassword('warga123456'),
-      role: Role.WARGA,
+      role: 'WARGA',
       resident: {
         create: {
           nik: '3201011005100006',
@@ -314,7 +315,7 @@ async function main() {
       name: 'Putri Supriyadi',
       email: 'putri@example.com',
       password: await hashPassword('warga123456'),
-      role: Role.WARGA,
+      role: 'WARGA',
       resident: {
         create: {
           nik: '3201012512120007',
@@ -348,7 +349,7 @@ async function main() {
       name: 'Joko Susilo',
       email: 'joko@example.com',
       password: await hashPassword('warga123456'),
-      role: Role.WARGA,
+      role: 'WARGA',
       resident: {
         create: {
           nik: '3201010102950008',
@@ -381,7 +382,7 @@ async function main() {
       name: 'Dewi Lestari',
       email: 'dewi@example.com',
       password: await hashPassword('warga123456'),
-      role: Role.WARGA,
+      role: 'WARGA',
       resident: {
         create: {
           nik: '3201010304960009',
