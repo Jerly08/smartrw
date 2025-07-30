@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  output: 'standalone',
   experimental: {
     // Aktifkan fitur eksperimental jika diperlukan
   },
