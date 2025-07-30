@@ -9,16 +9,36 @@ async function main() {
   
   // Delete existing data in the correct order to avoid foreign key constraints
   console.log('Deleting existing data...');
+  
+  // Use try-catch to handle tables that might not exist yet
+  const deleteTable = async (modelName, deleteFn) => {
+    try {
+      await deleteFn();
+      console.log(`✓ Cleared ${modelName} table`);
+    } catch (error) {
+      console.log(`⚠ ${modelName} table not found or already empty`);
+    }
+  };
+
   // First delete records from models that have foreign keys to User or Resident
-  await prisma.document.deleteMany({});
-  await prisma.complaint.deleteMany({});
-  // Add other dependent models here if needed in the future
+  await deleteTable('Notification', () => prisma.notification.deleteMany({}));
+  await deleteTable('EventPhoto', () => prisma.eventPhoto.deleteMany({}));
+  await deleteTable('EventParticipant', () => prisma.eventParticipant.deleteMany({}));
+  await deleteTable('Event', () => prisma.event.deleteMany({}));
+  await deleteTable('SocialAssistanceRecipient', () => prisma.socialAssistanceRecipient.deleteMany({}));
+  await deleteTable('SocialAssistance', () => prisma.socialAssistance.deleteMany({}));
+  await deleteTable('ForumCommentLike', () => prisma.forumCommentLike.deleteMany({}));
+  await deleteTable('ForumLike', () => prisma.forumLike.deleteMany({}));
+  await deleteTable('ForumComment', () => prisma.forumComment.deleteMany({}));
+  await deleteTable('ForumPost', () => prisma.forumPost.deleteMany({}));
+  await deleteTable('Document', () => prisma.document.deleteMany({}));
+  await deleteTable('Complaint', () => prisma.complaint.deleteMany({}));
 
   // Then delete the core models
-  await prisma.resident.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.family.deleteMany();
-  await prisma.rT.deleteMany();
+  await deleteTable('Resident', () => prisma.resident.deleteMany({}));
+  await deleteTable('User', () => prisma.user.deleteMany({}));
+  await deleteTable('Family', () => prisma.family.deleteMany({}));
+  await deleteTable('RT', () => prisma.rT.deleteMany({}));
 
   // Create RT entries first
   const rt1 = await prisma.rT.create({
