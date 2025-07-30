@@ -3,6 +3,10 @@
 # ---- Base Stage ----
 FROM node:18-alpine AS base
 WORKDIR /app
+
+# Install OpenSSL and other required dependencies
+RUN apk add --no-cache openssl libc6-compat
+
 COPY package*.json ./
 
 # ---- Dependencies Stage ----
@@ -22,7 +26,11 @@ RUN npm run build
 FROM node:18-alpine AS production
 WORKDIR /app
 
+# Install OpenSSL and other required dependencies
+RUN apk add --no-cache openssl libc6-compat
+
 ENV NODE_ENV=production
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl
 
 # Install production dependencies and Prisma CLI
 COPY package*.json ./
