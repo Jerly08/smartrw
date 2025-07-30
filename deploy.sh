@@ -48,6 +48,17 @@ echo "   Frontend: http://localhost"
 echo "   Backend API: http://localhost/api"
 echo "   Direct Backend: http://localhost:4000"
 echo ""
+echo "🌱 Would you like to run database seeding? (y/N)"
+read -r SEED_CHOICE
+if [[ $SEED_CHOICE =~ ^[Yy]$ ]]; then
+    echo "🌱 Running database seed..."
+    chmod +x scripts/run-seed.sh
+    ./scripts/run-seed.sh
+else
+    echo "⏭️ Skipping database seeding"
+fi
+echo ""
 echo "📊 To monitor logs: docker-compose logs -f"
 echo "🛑 To stop: docker-compose down"
 echo "🔄 To restart: docker-compose restart"
+echo "🌱 To run seed later: ./scripts/run-seed.sh"
