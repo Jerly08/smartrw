@@ -7,7 +7,14 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seeding...');
   
-  // Delete existing data to avoid duplicates
+  // Delete existing data in the correct order to avoid foreign key constraints
+  console.log('Deleting existing data...');
+  // First delete records from models that have foreign keys to User or Resident
+  await prisma.document.deleteMany({});
+  await prisma.complaint.deleteMany({});
+  // Add other dependent models here if needed in the future
+
+  // Then delete the core models
   await prisma.resident.deleteMany();
   await prisma.user.deleteMany();
   await prisma.family.deleteMany();
