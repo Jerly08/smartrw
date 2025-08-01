@@ -73,12 +73,28 @@ router.delete(
   socialAssistanceController.deleteSocialAssistance
 );
 
+// Update social assistance status (only Admin and RW)
+router.patch(
+  '/:id/status',
+  authenticate,
+  authorize(['ADMIN', 'RW']),
+  socialAssistanceController.updateSocialAssistanceStatus
+);
+
 // Get recipients for a social assistance program
 router.get(
   '/:id/recipients',
   authenticate,
   checkSocialAssistanceAccess,
   socialAssistanceController.getSocialAssistanceRecipients
+);
+
+// Export recipients to CSV
+router.get(
+  '/:id/recipients/export',
+  authenticate,
+  authorize(['ADMIN', 'RW', 'RT']),
+  socialAssistanceController.exportRecipients
 );
 
 // Add recipient to a social assistance program (only Admin and RW)

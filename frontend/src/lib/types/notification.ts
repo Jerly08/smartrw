@@ -25,7 +25,7 @@ export interface Notification {
   createdAt: string;
   scheduledFor?: string;
   expiresAt?: string;
-  data?: string; // JSON string that needs to be parsed
+  data?: any; // Object containing additional notification data
   
   // Related entities
   eventId?: number;

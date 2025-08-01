@@ -152,14 +152,8 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
 
   // Parse notification data
   const parseNotificationData = useCallback((notification: Notification) => {
-    try {
-      if (notification.data) {
-        return JSON.parse(notification.data);
-      }
-    } catch (e) {
-      console.error('Error parsing notification data:', e);
-    }
-    return {};
+    // Since the backend already parses the data, just return it directly
+    return notification.data || {};
   }, []);
 
   // Get role-based filtered notifications

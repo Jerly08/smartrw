@@ -629,6 +629,33 @@ export const publishEvent = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+// Unpublish event
+export const unpublishEvent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const eventId = parseInt(req.params.id);
+    
+    if (isNaN(eventId)) {
+      throw new ApiError('Invalid event ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    const event = await eventService.unpublishEvent(eventId, req.user.id);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Event unpublished successfully',
+      data: {
+        event,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get event statistics
 export const getEventStatistics = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -680,4 +707,106 @@ export const getEventStatistics = async (req: Request, res: Response, next: Next
   } catch (error) {
     next(error);
   }
-}; 
+};
+
+// Export event participants to CSV
+export const exportEventParticipants = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const eventId = parseInt(req.params.id);
+    
+    if (isNaN(eventId)) {
+      throw new ApiError('Invalid event ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Get event details
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        location: true,
+      },
+    });
+    
+    if (!event) {
+      throw new ApiError('Event not found', 404);
+    }
+    
+    // Get participants with user details
+    const participants = await prisma.eventParticipant.findMany({
+      where: {
+        eventId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            resident: {
+              select: {
+                fullName: true,
+                phoneNumber: true,
+                address: true,
+                rtNumber: true,
+                rwNumber: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    
+    // Create CSV content
+    const csvHeader = [
+      'No',
+      'Nama',
+      'Email',
+      'No. Telepon',
+      'Alamat',
+      'RT',
+      'RW',
+      'Status RSVP',
+      'Tanggal Daftar',
+    ].join(',');
+    
+    const csvRows = participants.map((participant, index) => {
+      const user = participant.user;
+      const resident = user?.resident;
+      
+      return [
+        index + 1,
+        `"${user?.name || resident?.fullName || 'N/A'}"`,
+        `"${user?.email || 'N/A'}"`,
+        `"${resident?.phoneNumber || 'N/A'}"`,
+        `"${resident?.address || 'N/A'}"`,
+        `"${resident?.rtNumber || 'N/A'}"`,
+        `"${resident?.rwNumber || 'N/A'}"`,
+        `"${participant.status}"`,
+        `"${participant.createdAt.toLocaleDateString('id-ID')}"`,
+      ].join(',');
+    });
+    
+    const csvContent = [csvHeader, ...csvRows].join('\n');
+    
+    // Set headers for file download
+    const fileName = `peserta-${event.title.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    
+    // Add BOM for proper UTF-8 encoding in Excel
+    res.write('\uFEFF');
+    res.end(csvContent);
+  } catch (error) {
+    next(error);
+  }
+};

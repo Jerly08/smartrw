@@ -336,6 +336,39 @@ export const removeRecipient = async (req: Request, res: Response, next: NextFun
   }
 };
 
+// Update social assistance status
+export const updateSocialAssistanceStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    const assistanceId = parseInt(req.params.id);
+    
+    if (isNaN(assistanceId)) {
+      throw new ApiError('Invalid social assistance ID', 400);
+    }
+    
+    const { status } = req.body;
+    
+    if (!status || !['DISIAPKAN', 'DISALURKAN', 'SELESAI'].includes(status)) {
+      throw new ApiError('Invalid status', 400);
+    }
+    
+    const updatedProgram = await socialAssistanceService.updateSocialAssistance(assistanceId, { status });
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Social assistance status updated successfully',
+      data: {
+        program: updatedProgram,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get social assistance statistics
 export const getSocialAssistanceStatistics = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -358,6 +391,106 @@ export const getSocialAssistanceStatistics = async (req: Request, res: Response,
     next(error);
   }
 }; 
+
+// Export recipients to CSV
+export const exportRecipients = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const assistanceId = parseInt(req.params.id);
+    
+    if (isNaN(assistanceId)) {
+      throw new ApiError('Invalid social assistance ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Get program details
+    const program = await prisma.socialAssistance.findUnique({
+      where: { id: assistanceId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+      },
+    });
+    
+    if (!program) {
+      throw new ApiError('Social assistance program not found', 404);
+    }
+    
+    // Get recipients with resident details
+    const recipients = await prisma.socialAssistanceRecipient.findMany({
+      where: {
+        socialAssistanceId: assistanceId,
+      },
+      include: {
+        resident: {
+          select: {
+            fullName: true,
+            nik: true,
+            phoneNumber: true,
+            address: true,
+            rtNumber: true,
+            rwNumber: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    
+    // Create CSV content
+    const csvHeader = [
+      'No',
+      'Nama Lengkap',
+      'NIK',
+      'No. Telepon',
+      'Alamat',
+      'RT',
+      'RW',
+      'Status Verifikasi',
+      'Tanggal Verifikasi',
+      'Tanggal Diterima',
+      'Catatan',
+      'Tanggal Daftar',
+    ].join(',');
+    
+    const csvRows = recipients.map((recipient, index) => {
+      const resident = recipient.resident;
+      
+      return [
+        index + 1,
+        `"${resident?.fullName || 'N/A'}"`,
+        `"${resident?.nik || 'N/A'}"`,
+        `"${resident?.phoneNumber || 'N/A'}"`,
+        `"${resident?.address || 'N/A'}"`,
+        `"${resident?.rtNumber || 'N/A'}"`,
+        `"${resident?.rwNumber || 'N/A'}"`,
+        `"${recipient.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi'}"`,
+        `"${recipient.verifiedAt ? new Date(recipient.verifiedAt).toLocaleDateString('id-ID') : 'N/A'}"`,
+        `"${recipient.receivedDate ? new Date(recipient.receivedDate).toLocaleDateString('id-ID') : 'N/A'}"`,
+        `"${recipient.notes || 'N/A'}"`,
+        `"${new Date(recipient.createdAt).toLocaleDateString('id-ID')}"`,
+      ].join(',');
+    });
+    
+    const csvContent = [csvHeader, ...csvRows].join('\n');
+    
+    // Set headers for file download
+    const fileName = `penerima-${program.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    
+    // Add BOM for proper UTF-8 encoding in Excel
+    res.write('\uFEFF');
+    res.end(csvContent);
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Check resident eligibility for social assistance
 export const checkResidentEligibility = async (req: Request, res: Response, next: NextFunction) => {

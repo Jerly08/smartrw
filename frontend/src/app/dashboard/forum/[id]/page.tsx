@@ -323,6 +323,15 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
                   RT {post.author.resident.rtNumber}
                 </span>
               )}
+              {!post.author ? null : post.author.role === 'RT' ? (
+                <span className="ml-2 text-xs bg-blue-100 px-2 py-0.5 rounded-full text-blue-800">
+                  RT
+                </span>
+              ) : post.author.role === 'RW' ? (
+                <span className="ml-2 text-xs bg-green-100 px-2 py-0.5 rounded-full text-green-800">
+                  RW
+                </span>
+              ) : null}
             </div>
           </div>
           
@@ -456,11 +465,20 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
               <div className="flex justify-between">
                 <div className="flex items-center">
                   <div className="font-medium text-gray-900">{comment.author?.name || 'Unknown'}</div>
-                  {comment.author?.resident?.rtNumber && (
+{comment.author?.resident?.rtNumber && (
                     <span className="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded-full">
                       RT {comment.author.resident.rtNumber}
                     </span>
                   )}
+                  {!comment.author ? null : comment.author.role === 'RT' ? (
+                    <span className="ml-2 text-xs bg-blue-100 px-2 py-0.5 rounded-full text-blue-800">
+                      RT
+                    </span>
+                  ) : comment.author.role === 'RW' ? (
+                    <span className="ml-2 text-xs bg-green-100 px-2 py-0.5 rounded-full text-green-800">
+                      RW
+                    </span>
+                  ) : null}
                 </div>
                 <div className="text-sm text-gray-500">{formatDate(comment.createdAt)}</div>
               </div>

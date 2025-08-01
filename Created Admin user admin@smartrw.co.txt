@@ -32,14 +32,19 @@ Password: RT005@2024
 
 
 📝 Informasi Login RW
-Email: jerlyjy@gmail.com
+Email: rw001@smartrw.com
 
-Password: RW008@2024
+Password: RW001@2024
 
 📝 Informasi Login RT
-Email: rt010@smartrw.com
+Email: rt003@smartrw.com
 
-Password: RT010@2024
+Password: RT003@2024
+
+📝 Informasi Login RT
+Email: rt004@smartrw.com
+
+Password: RT004@2024
 
 
 MYSQL_ROOT_PASSWORD=oMuPyAasta4CIhVW5SxFhkUfQ

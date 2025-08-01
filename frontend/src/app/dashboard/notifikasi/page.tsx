@@ -71,12 +71,8 @@ export default function NotificationsPage() {
               return true; // Social assistance verification requests
             case 'SYSTEM':
               // Check if it's a resident verification notification
-              try {
-                const data = notification.data ? JSON.parse(notification.data) : {};
-                return data.residentId != null;
-              } catch (e) {
-                return false;
-              }
+              const data = notification.data || {};
+              return data.residentId != null;
             case 'EVENT':
               return true; // Events relevant to RT
             case 'ANNOUNCEMENT':
@@ -92,12 +88,8 @@ export default function NotificationsPage() {
           switch (notification.type) {
             case 'DOCUMENT':
               // Only their own document status updates
-              try {
-                const data = notification.data ? JSON.parse(notification.data) : {};
-                return data.userId === user.id;
-              } catch (e) {
-                return true; // Show all document notifications if parsing fails
-              }
+              const docData = notification.data || {};
+              return docData.userId === user.id;
             case 'EVENT':
               return true; // Events in their area
             case 'ANNOUNCEMENT':
@@ -106,12 +98,8 @@ export default function NotificationsPage() {
               return true; // Forum discussions
             case 'SOCIAL_ASSISTANCE':
               // Only notifications about their assistance applications
-              try {
-                const data = notification.data ? JSON.parse(notification.data) : {};
-                return data.userId === user.id;
-              } catch (e) {
-                return true; // Show all assistance notifications if parsing fails
-              }
+              const assistData = notification.data || {};
+              return assistData.userId === user.id;
             case 'SYSTEM':
               // System notifications addressed to them
               return true;
@@ -375,7 +363,7 @@ export default function NotificationsPage() {
             let data = {};
             try {
               if (notification.data) {
-                data = JSON.parse(notification.data);
+                data = notification.data;
               }
             } catch (e) {
               console.error('Error parsing notification data:', e);

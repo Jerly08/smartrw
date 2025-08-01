@@ -50,10 +50,8 @@ export const updateComplaintSchema = z.object({
 
 // Response complaint schema
 export const respondComplaintSchema = z.object({
-  body: z.object({
-    response: z.string().min(5, 'Response must be at least 5 characters'),
-    status: z.enum(['DITINDAKLANJUTI', 'SELESAI', 'DITOLAK']),
-  }),
+  response: z.string().min(5, 'Response must be at least 5 characters'),
+  status: z.enum(['DITINDAKLANJUTI', 'SELESAI', 'DITOLAK']),
 });
 
 // Search complaints schema

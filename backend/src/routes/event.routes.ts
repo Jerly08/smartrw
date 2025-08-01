@@ -44,6 +44,15 @@ router.get(
   eventController.getEventParticipants
 );
 
+// Export event participants to CSV
+router.get(
+  '/:id/participants/export',
+  authenticate,
+  authorize(['RT', 'RW', 'ADMIN']),
+  checkEventManageAccess,
+  eventController.exportEventParticipants
+);
+
 // Create event - only RT, RW, and Admin can create events
 router.post(
   '/',
@@ -117,6 +126,15 @@ router.post(
   authorize(['RT', 'RW', 'ADMIN']),
   checkEventManageAccess,
   eventController.publishEvent
+);
+
+// Unpublish event - only event creator, RT (for their RT), RW, and Admin can unpublish events
+router.post(
+  '/:id/unpublish',
+  authenticate,
+  authorize(['RT', 'RW', 'ADMIN']),
+  checkEventManageAccess,
+  eventController.unpublishEvent
 );
 
 export default router; 

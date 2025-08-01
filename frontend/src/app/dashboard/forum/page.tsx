@@ -298,6 +298,15 @@ export default function ForumPage() {
                         RT {post.author.resident.rtNumber}
                       </span>
                     )}
+                    {!post.author ? null : post.author.role === 'RT' ? (
+                      <span className="ml-2 text-xs bg-blue-100 px-2 py-0.5 rounded-full text-blue-800">
+                        RT
+                      </span>
+                    ) : post.author.role === 'RW' ? (
+                      <span className="ml-2 text-xs bg-green-100 px-2 py-0.5 rounded-full text-green-800">
+                        RW
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 

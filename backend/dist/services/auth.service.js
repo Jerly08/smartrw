@@ -272,6 +272,14 @@ const verifyResidentWithRT = (userId, data) => __awaiter(void 0, void 0, void 0,
         }
         return { resident, rt, isUpdate };
     }));
+    // Create notifications for RT users when new resident registers or updates profile
+    try {
+        yield createResidentVerificationNotificationsForRT(result.resident);
+    }
+    catch (error) {
+        console.error('Error creating resident verification notifications for RT:', error);
+        // Don't fail the main process if notification fails
+    }
     return result;
 });
 exports.verifyResidentWithRT = verifyResidentWithRT;
@@ -298,3 +306,42 @@ const getActiveRTs = () => __awaiter(void 0, void 0, void 0, function* () {
     return rts;
 });
 exports.getActiveRTs = getActiveRTs;
+// Helper function to create notifications for RT users when new residents register
+function createResidentVerificationNotificationsForRT(resident) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { rtNumber, rwNumber } = resident;
+            // Get all RT users for the resident's RT
+            const rtUsers = yield prisma.user.findMany({
+                where: {
+                    role: 'RT',
+                    resident: {
+                        rtNumber,
+                        rwNumber,
+                    },
+                },
+            });
+            // Create notifications for RT users
+            for (const rtUser of rtUsers) {
+                yield prisma.notification.create({
+                    data: {
+                        userId: rtUser.id,
+                        type: 'SYSTEM',
+                        title: 'Verifikasi Warga Baru',
+                        message: `Warga baru ${resident.fullName} memerlukan verifikasi Anda`,
+                        priority: 'HIGH',
+                        data: JSON.stringify({
+                            residentId: resident.id,
+                            residentName: resident.fullName,
+                            residentNik: resident.nik,
+                            residentAddress: resident.address,
+                        }),
+                    },
+                });
+            }
+        }
+        catch (error) {
+            console.error('Error creating resident verification notifications for RT:', error);
+        }
+    });
+}

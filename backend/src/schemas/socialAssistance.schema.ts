@@ -27,39 +27,31 @@ const socialAssistanceBaseSchema = {
 };
 
 // Create social assistance schema
-export const createSocialAssistanceSchema = z.object({
-  body: z.object(socialAssistanceBaseSchema),
-});
+export const createSocialAssistanceSchema = z.object(socialAssistanceBaseSchema);
 
 // Update social assistance schema
 export const updateSocialAssistanceSchema = z.object({
-  body: z.object({
-    ...Object.fromEntries(
-      Object.entries(socialAssistanceBaseSchema).map(([key, schema]) => [key, schema.optional()])
-    ),
-    status: z.enum(socialAssistanceStatuses).optional(),
-  }).refine(data => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided for update',
-  }),
+  ...Object.fromEntries(
+    Object.entries(socialAssistanceBaseSchema).map(([key, schema]) => [key, schema.optional()])
+  ),
+  status: z.enum(socialAssistanceStatuses).optional(),
+}).refine(data => Object.keys(data).length > 0, {
+  message: 'At least one field must be provided for update',
 });
 
 // Add recipient schema
 export const addRecipientSchema = z.object({
-  body: z.object({
-    residentId: z.number().int().positive('Resident ID must be a positive integer'),
-    notes: z.string().optional(),
-  }),
+  residentId: z.number().int().positive('Resident ID must be a positive integer'),
+  notes: z.string().optional(),
 });
 
 // Update recipient schema
 export const updateRecipientSchema = z.object({
-  body: z.object({
-    notes: z.string().optional(),
-    isVerified: z.boolean().optional(),
-    receivedDate: z.string().transform(val => new Date(val)).optional(),
-  }).refine(data => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided for update',
-  }),
+  notes: z.string().optional(),
+  isVerified: z.boolean().optional(),
+  receivedDate: z.string().transform(val => new Date(val)).optional(),
+}).refine(data => Object.keys(data).length > 0, {
+  message: 'At least one field must be provided for update',
 });
 
 // Search social assistance schema

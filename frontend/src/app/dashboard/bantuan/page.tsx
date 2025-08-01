@@ -70,7 +70,9 @@ export default function SocialAssistancePage() {
       const response = await socialAssistanceApi.getAllSocialAssistance(params);
       
       // Ensure we always have an array
-      const programsData = response?.socialAssistance || response?.data?.socialAssistance || response || [];
+      const programsData = response?.data?.programs || [];
+      console.log('API Response:', response);
+      console.log('Programs Data:', programsData);
       setPrograms(Array.isArray(programsData) ? programsData : []);
     } catch (error) {
       console.error('Error fetching social assistance programs:', error);
@@ -318,10 +320,10 @@ export default function SocialAssistancePage() {
                 
                 <div className="mt-4 flex items-center">
                   <span className="text-sm text-gray-500">Sumber: {program.source}</span>
-                  {program.recipientCount !== undefined && (
+                  {(program as any)?._count?.recipients !== undefined && (
                     <span className="ml-4 flex items-center text-sm text-gray-500">
                       <FiUsers className="mr-1" />
-                      {program.recipientCount} penerima
+                      {(program as any)?._count?.recipients} penerima
                     </span>
                   )}
                 </div>

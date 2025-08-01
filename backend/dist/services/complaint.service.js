@@ -43,32 +43,93 @@ const getAllComplaints = (params, currentUser) => __awaiter(void 0, void 0, void
     // Apply role-based filtering
     if (currentUser.role === 'RT') {
         // RT can only see complaints from their RT
-        const rtResident = yield prisma.resident.findFirst({
-            where: { userId: currentUser.id },
+        const rtUser = yield prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: {
+                resident: true,
+                rt: true
+            }
         });
-        if (!rtResident) {
-            throw new error_middleware_1.ApiError('RT profile not found', 404);
+        if (!rtUser) {
+            throw new error_middleware_1.ApiError('RT user not found', 404);
         }
-        // Get all users from the RT's area
-        const rtUsers = yield prisma.resident.findMany({
+        let rtNumber = null;
+        let rwNumber = null;
+        // Get RT information from either RT profile or resident profile
+        if (rtUser.rt) {
+            rtNumber = rtUser.rt.number;
+            // Get RW number from RT's area (assuming RT knows its RW)
+            const rtInfo = yield prisma.rT.findUnique({
+                where: { id: rtUser.rt.id },
+                select: { number: true }
+            });
+            if (rtInfo) {
+                rtNumber = rtInfo.number;
+                // Extract RW number from RT number (assuming format like "001" where RW is first digit)
+                rwNumber = '01'; // You might need to adjust this based on your data structure
+            }
+        }
+        else if (rtUser.resident) {
+            rtNumber = rtUser.resident.rtNumber;
+            rwNumber = rtUser.resident.rwNumber;
+        }
+        if (!rtNumber) {
+            throw new error_middleware_1.ApiError('RT information not found', 404);
+        }
+        // Get all users (warga) from the RT's area
+        const rtResidents = yield prisma.resident.findMany({
+            where: Object.assign({ rtNumber: rtNumber }, (rwNumber && { rwNumber: rwNumber })),
+            select: { userId: true },
+        });
+        const rtUserIds = rtResidents.map(resident => resident.userId);
+        // Filter complaints by RT's residents only
+        whereConditions.createdBy = { in: rtUserIds };
+        // If rtNumber is specified in query, it must match the RT's rtNumber
+        if (params.rtNumber && params.rtNumber !== rtNumber) {
+            throw new error_middleware_1.ApiError('RT can only access complaints for their own RT', 403);
+        }
+        // If rwNumber is specified in query, it must match the RT's rwNumber
+        if (params.rwNumber && rwNumber && params.rwNumber !== rwNumber) {
+            throw new error_middleware_1.ApiError('RT can only access complaints for their own RW', 403);
+        }
+    }
+    else if (currentUser.role === 'RW') {
+        // RW can see complaints from all RTs under their RW
+        const rwUser = yield prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: {
+                resident: true
+            }
+        });
+        if (!(rwUser === null || rwUser === void 0 ? void 0 : rwUser.resident)) {
+            throw new error_middleware_1.ApiError('RW user profile not found', 404);
+        }
+        const rwNumber = rwUser.resident.rwNumber;
+        // Get all residents from the RW's area (all RTs under this RW)
+        const rwResidents = yield prisma.resident.findMany({
             where: {
-                rtNumber: rtResident.rtNumber,
-                rwNumber: rtResident.rwNumber
+                rwNumber: rwNumber
             },
             select: { userId: true },
         });
-        const rtUserIds = rtUsers.map(user => user.userId);
-        // Filter complaints by RT's users
-        whereConditions.OR = [
-            { createdBy: { in: rtUserIds } },
-        ];
-        // If rtNumber is specified, it must match the RT's rtNumber
-        if (rtNumber && rtNumber !== rtResident.rtNumber) {
-            throw new error_middleware_1.ApiError('RT can only access complaints for their own RT', 403);
-        }
-        // If rwNumber is specified, it must match the RT's rwNumber
-        if (rwNumber && rwNumber !== rtResident.rwNumber) {
-            throw new error_middleware_1.ApiError('RT can only access complaints for their own RW', 403);
+        const rwUserIds = rwResidents.map(resident => resident.userId);
+        // Filter complaints by RW's residents (from all RTs under this RW)
+        whereConditions.createdBy = { in: rwUserIds };
+        // Apply additional filters if provided
+        if (params.rtNumber) {
+            // RW can filter by specific RT under their RW
+            const rtResidents = yield prisma.resident.findMany({
+                where: {
+                    rtNumber: params.rtNumber,
+                    rwNumber: rwNumber // Ensure RT is under this RW
+                },
+                select: { userId: true },
+            });
+            if (rtResidents.length === 0) {
+                throw new error_middleware_1.ApiError('RT not found under your RW', 403);
+            }
+            const rtUserIds = rtResidents.map(resident => resident.userId);
+            whereConditions.createdBy = { in: rtUserIds };
         }
     }
     else if (currentUser.role === 'WARGA') {
@@ -76,17 +137,17 @@ const getAllComplaints = (params, currentUser) => __awaiter(void 0, void 0, void
         whereConditions.createdBy = currentUser.id;
         // Ignore rtNumber and rwNumber filters for Warga
     }
-    else {
-        // Admin and RW can see all complaints
+    else if (currentUser.role === 'ADMIN') {
+        // Admin can see all complaints
         // Apply optional filters if provided
-        if (rtNumber || rwNumber) {
+        if (params.rtNumber || params.rwNumber) {
             // Get all users from the specified RT/RW
             const residentsQuery = {};
-            if (rtNumber) {
-                residentsQuery.rtNumber = rtNumber;
+            if (params.rtNumber) {
+                residentsQuery.rtNumber = params.rtNumber;
             }
-            if (rwNumber) {
-                residentsQuery.rwNumber = rwNumber;
+            if (params.rwNumber) {
+                residentsQuery.rwNumber = params.rwNumber;
             }
             const residents = yield prisma.resident.findMany({
                 where: residentsQuery,
@@ -317,29 +378,67 @@ const getComplaintStatistics = (currentUser) => __awaiter(void 0, void 0, void 0
     // Apply role-based filtering
     if (currentUser.role === 'RT') {
         // RT can only see statistics for their RT
-        const rtResident = yield prisma.resident.findFirst({
-            where: { userId: currentUser.id },
+        const rtUser = yield prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: {
+                resident: true,
+                rt: true
+            }
         });
-        if (!rtResident) {
-            throw new error_middleware_1.ApiError('RT profile not found', 404);
+        if (!rtUser) {
+            throw new error_middleware_1.ApiError('RT user not found', 404);
+        }
+        let rtNumber = null;
+        let rwNumber = null;
+        // Get RT information from either RT profile or resident profile
+        if (rtUser.rt) {
+            rtNumber = rtUser.rt.number;
+            rwNumber = '01'; // You might need to adjust this based on your data structure
+        }
+        else if (rtUser.resident) {
+            rtNumber = rtUser.resident.rtNumber;
+            rwNumber = rtUser.resident.rwNumber;
+        }
+        if (!rtNumber) {
+            throw new error_middleware_1.ApiError('RT information not found', 404);
         }
         // Get all users from the RT's area
         const rtUsers = yield prisma.resident.findMany({
-            where: {
-                rtNumber: rtResident.rtNumber,
-                rwNumber: rtResident.rwNumber
-            },
+            where: Object.assign({ rtNumber: rtNumber }, (rwNumber && { rwNumber: rwNumber })),
             select: { userId: true },
         });
         const rtUserIds = rtUsers.map(user => user.userId);
         // Filter complaints by RT's users
         whereConditions.createdBy = { in: rtUserIds };
     }
+    else if (currentUser.role === 'RW') {
+        // RW can see statistics from all RTs under their RW
+        const rwUser = yield prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: {
+                resident: true
+            }
+        });
+        if (!(rwUser === null || rwUser === void 0 ? void 0 : rwUser.resident)) {
+            throw new error_middleware_1.ApiError('RW user profile not found', 404);
+        }
+        const rwNumber = rwUser.resident.rwNumber;
+        // Get all residents from the RW's area (all RTs under this RW)
+        const rwResidents = yield prisma.resident.findMany({
+            where: {
+                rwNumber: rwNumber
+            },
+            select: { userId: true },
+        });
+        const rwUserIds = rwResidents.map(resident => resident.userId);
+        // Filter complaints by RW's residents (from all RTs under this RW)
+        whereConditions.createdBy = { in: rwUserIds };
+    }
     else if (currentUser.role === 'WARGA') {
         // Warga can only see statistics for their own complaints
         whereConditions.createdBy = currentUser.id;
     }
-    // Admin and RW can see all statistics
+    // Admin can see all statistics
     // Get total complaints
     const totalComplaints = yield prisma.complaint.count({
         where: whereConditions,

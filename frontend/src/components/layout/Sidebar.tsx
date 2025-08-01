@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useNotifications } from '@/lib/hooks/useNotifications';
 import { 
   FiHome, 
   FiUsers, 
@@ -29,20 +30,30 @@ interface NavItemProps {
   active?: boolean;
   role?: string[];
   onClick?: () => void;
+  badge?: number;
 }
 
-const NavItem = ({ href, icon, label, active, role }: NavItemProps) => {
+const NavItem = ({ href, icon, label, active, role, badge }: NavItemProps) => {
   return (
     <Link
       href={href}
-      className={`flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors ${
+      className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-md transition-colors ${
         active
           ? 'bg-blue-100 text-blue-800'
           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
       }`}
     >
-      <span className="mr-3 text-lg">{icon}</span>
-      <span>{label}</span>
+      <div className="flex items-center">
+        <span className="mr-3 text-lg relative">
+          {icon}
+          {badge && badge > 0 && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
+        </span>
+        <span>{label}</span>
+      </div>
     </Link>
   );
 };
@@ -50,6 +61,7 @@ const NavItem = ({ href, icon, label, active, role }: NavItemProps) => {
 export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { unreadCount } = useNotifications({});
   const isAdmin = user?.role === 'ADMIN';
   const isRW = user?.role === 'RW';
   const isRT = user?.role === 'RT';
@@ -82,7 +94,8 @@ export default function Sidebar() {
             href="/dashboard/notifikasi" 
             icon={<FiBell />} 
             label="Notifikasi" 
-            active={pathname?.startsWith('/dashboard/notifikasi') || false} 
+            active={pathname?.startsWith('/dashboard/notifikasi') || false}
+            badge={unreadCount}
           />
           
           {(isAdmin || isRW || isRT) && (

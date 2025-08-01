@@ -100,15 +100,8 @@ export default function RTNotifications() {
       {notifications.length > 0 ? (
         <div className="space-y-3">
           {notifications.slice(0, 5).map((notification) => {
-            // Parse JSON data if it exists
-            let data = {};
-            try {
-              if (notification.data) {
-                data = JSON.parse(notification.data);
-              }
-            } catch (e) {
-              console.error('Error parsing notification data:', e);
-            }
+            // Get notification data (already parsed by backend)
+            const data = notification.data || {};
             
             return (
               <div 

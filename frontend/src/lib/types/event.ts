@@ -50,6 +50,8 @@ export interface EventParticipant {
   eventId: number;
   userId: number;
   status: RSVPStatus;
+  notes?: string;
+  registeredAt: string;
   createdAt: string;
   updatedAt: string;
   user?: User;

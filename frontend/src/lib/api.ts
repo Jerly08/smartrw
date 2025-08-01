@@ -387,25 +387,25 @@ export const documentApi = {
 
   // Approve document
   approveDocument: async (id: number, notes?: string) => {
-    const response = await api.post(`/documents/${id}/process`, { status: 'approved', notes });
+    const response = await api.post(`/documents/${id}/process`, { status: 'DISETUJUI', notes });
     return response.data.data.document as Document;
   },
 
   // Reject document
   rejectDocument: async (id: number, notes?: string) => {
-    const response = await api.post(`/documents/${id}/process`, { status: 'rejected', notes });
+    const response = await api.post(`/documents/${id}/process`, { status: 'DITOLAK', notes });
     return response.data.data.document as Document;
   },
 
   // Sign document
   signDocument: async (id: number, notes?: string) => {
-    const response = await api.post(`/documents/${id}/process`, { status: 'signed', notes });
+    const response = await api.post(`/documents/${id}/process`, { status: 'DITANDATANGANI', notes });
     return response.data.data.document as Document;
   },
 
   // Complete document
   completeDocument: async (id: number, notes?: string) => {
-    const response = await api.post(`/documents/${id}/process`, { status: 'completed', notes });
+    const response = await api.post(`/documents/${id}/process`, { status: 'SELESAI', notes });
     return response.data.data.document as Document;
   },
 
@@ -525,13 +525,13 @@ export const eventApi = {
 
   // Publish event
   publishEvent: async (id: number) => {
-    const response = await api.patch(`/events/${id}/publish`);
+    const response = await api.post(`/events/${id}/publish`);
     return response.data.data.event as Event;
   },
 
   // Unpublish event
   unpublishEvent: async (id: number) => {
-    const response = await api.patch(`/events/${id}/unpublish`);
+    const response = await api.post(`/events/${id}/unpublish`);
     return response.data.data.event as Event;
   },
 
@@ -718,26 +718,31 @@ export const complaintApi = {
 export const socialAssistanceApi = {
   // Get all social assistance programs with filtering and pagination
   getAllSocialAssistance: async (params: { page?: number; limit?: number } & SocialAssistanceFilter) => {
-    const response = await api.get('/social-assistance', { params });
-    return response.data.data;
+    const response = await api.get('/social-assistance', { 
+      params,
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    return response.data;
   },
 
   // Get social assistance by ID
   getSocialAssistanceById: async (id: number) => {
     const response = await api.get(`/social-assistance/${id}`);
-    return response.data.data.socialAssistance as SocialAssistance;
+    return response.data.data.program as SocialAssistance;
   },
 
   // Create new social assistance program
   createSocialAssistance: async (data: SocialAssistanceFormData) => {
     const response = await api.post('/social-assistance', data);
-    return response.data.data.socialAssistance as SocialAssistance;
+    return response.data.data.program as SocialAssistance;
   },
 
   // Update social assistance program
   updateSocialAssistance: async (id: number, data: Partial<SocialAssistanceFormData>) => {
     const response = await api.put(`/social-assistance/${id}`, data);
-    return response.data.data.socialAssistance as SocialAssistance;
+    return response.data.data.program as SocialAssistance;
   },
 
   // Delete social assistance program
@@ -749,7 +754,7 @@ export const socialAssistanceApi = {
   // Change social assistance status
   updateSocialAssistanceStatus: async (id: number, status: string) => {
     const response = await api.patch(`/social-assistance/${id}/status`, { status });
-    return response.data.data.socialAssistance as SocialAssistance;
+    return response.data.data.program as SocialAssistance;
   },
 
   // Get all recipients for a social assistance program

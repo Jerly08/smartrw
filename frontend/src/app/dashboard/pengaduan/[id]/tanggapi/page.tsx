@@ -66,8 +66,8 @@ export default function RespondToComplaintPage({ params }: { params: { id: strin
         setValue('response', data.response);
       }
       
-      // Pre-fill status
-      if (data.status) {
+      // Pre-fill status only if it's a valid response status
+      if (data.status && [ComplaintStatus.DITINDAKLANJUTI, ComplaintStatus.SELESAI, ComplaintStatus.DITOLAK].includes(data.status)) {
         setValue('status', data.status);
       }
     } catch (error) {

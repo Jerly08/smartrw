@@ -1,4 +1,4 @@
-import { PrismaClient, User, $Enums } from '@prisma/client';
+import { PrismaClient, User, $Enums, Resident } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../middleware/error.middleware';
@@ -335,6 +335,14 @@ export const verifyResidentWithRT = async (userId: number, data: VerifyResidentI
     return { resident, rt, isUpdate };
   });
 
+  // Create notifications for RT users when new resident registers or updates profile
+  try {
+    await createResidentVerificationNotificationsForRT(result.resident);
+  } catch (error) {
+    console.error('Error creating resident verification notifications for RT:', error);
+    // Don't fail the main process if notification fails
+  }
+
   return result;
 };
 
@@ -361,3 +369,42 @@ export const getActiveRTs = async () => {
 
   return rts;
 };
+
+// Helper function to create notifications for RT users when new residents register
+async function createResidentVerificationNotificationsForRT(resident: Resident) {
+  try {
+    const { rtNumber, rwNumber } = resident;
+    
+    // Get all RT users for the resident's RT
+    const rtUsers = await prisma.user.findMany({
+      where: {
+        role: 'RT',
+        resident: {
+          rtNumber,
+          rwNumber,
+        },
+      },
+    });
+    
+    // Create notifications for RT users
+    for (const rtUser of rtUsers) {
+      await prisma.notification.create({
+        data: {
+          userId: rtUser.id,
+          type: 'SYSTEM',
+          title: 'Verifikasi Warga Baru',
+          message: `Warga baru ${resident.fullName} memerlukan verifikasi Anda`,
+          priority: 'HIGH',
+          data: JSON.stringify({
+            residentId: resident.id,
+            residentName: resident.fullName,
+            residentNik: resident.nik,
+            residentAddress: resident.address,
+          }),
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Error creating resident verification notifications for RT:', error);
+  }
+}
