@@ -162,31 +162,80 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
     return {};
   }, []);
 
-  // Get RT-specific notifications
-  const getRTNotifications = useCallback(() => {
-    if (user?.role !== 'RT') return [];
+  // Get role-based filtered notifications
+  const getRoleBasedNotifications = useCallback(() => {
+    if (!user) return [];
     
     return notifications.filter(notification => {
-      // For RT users, filter to show only relevant notifications
-      switch (notification.type) {
-        case 'DOCUMENT':
-          return true; // Document verification requests
-        case 'COMPLAINT':
-          return true; // Complaints from residents
-        case 'SOCIAL_ASSISTANCE':
-          return true; // Social assistance verification
-        case 'SYSTEM':
-          // Check if it's a resident verification notification
-          const data = parseNotificationData(notification);
-          return data.residentId != null;
-        case 'EVENT':
-          // Only events targeting this RT
+      switch (user.role) {
+        case 'ADMIN':
+          // Admin receives all notifications
           return true;
+          
+        case 'RW':
+          // RW receives notifications from RT and warga in their wilayah
+          // This would typically check against user's RW number
+          // For now, show all relevant notification types
+          return ['DOCUMENT', 'COMPLAINT', 'EVENT', 'SOCIAL_ASSISTANCE', 'FORUM', 'ANNOUNCEMENT', 'SYSTEM'].includes(notification.type);
+          
+        case 'RT':
+          // RT receives notifications from warga in their wilayah
+          switch (notification.type) {
+            case 'DOCUMENT':
+              return true; // Document verification requests from residents
+            case 'COMPLAINT':
+              return true; // Complaints from residents in RT area
+            case 'SOCIAL_ASSISTANCE':
+              return true; // Social assistance verification requests
+            case 'SYSTEM':
+              // Check if it's a resident verification notification
+              const data = parseNotificationData(notification);
+              return data.residentId != null;
+            case 'EVENT':
+              return true; // Events relevant to RT
+            case 'ANNOUNCEMENT':
+              return true; // Announcements from RW/Admin
+            case 'FORUM':
+              return true; // Forum posts in RT area
+            default:
+              return false;
+          }
+          
+        case 'WARGA':
+          // Warga only sees personal notifications or announcements for their area
+          switch (notification.type) {
+            case 'DOCUMENT':
+              // Only their own document status updates
+              const docData = parseNotificationData(notification);
+              return docData.userId === user.id;
+            case 'EVENT':
+              return true; // Events in their area
+            case 'ANNOUNCEMENT':
+              return true; // General announcements
+            case 'FORUM':
+              return true; // Forum discussions
+            case 'SOCIAL_ASSISTANCE':
+              // Only notifications about their assistance applications
+              const assistData = parseNotificationData(notification);
+              return assistData.userId === user.id;
+            case 'SYSTEM':
+              // System notifications addressed to them
+              return true;
+            default:
+              return false;
+          }
+          
         default:
           return false;
       }
     });
   }, [user, notifications, parseNotificationData]);
+  
+  // Get RT-specific notifications (for backward compatibility)
+  const getRTNotifications = useCallback(() => {
+    if (user?.role !== 'RT') return [];
+    return getRoleBasedNotifications();
+  }, [user, getRoleBasedNotifications]);
 
   return {
     notifications,

@@ -13,7 +13,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Protect routes - redirect to login if not authenticated
   useEffect(() => {
@@ -50,14 +50,26 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-gray-100">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" 
+          onClick={toggleSidebar}
+        ></div>
+      )}
+      
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'block' : 'hidden'} md:block`}>
-        <Sidebar />
+      <div className={`
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:relative md:translate-x-0 md:transform-none
+      `}>
+        <Sidebar onClose={() => setSidebarOpen(false)} />
       </div>
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header toggleSidebar={toggleSidebar} />
+      <div className="flex-1 flex flex-col overflow-hidden md:ml-0">
+        <Header toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}

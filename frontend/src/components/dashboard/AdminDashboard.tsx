@@ -56,63 +56,43 @@ interface AdminStats {
   };
 }
 
-// Mock data - replace with API calls
-const mockAdminStats: AdminStats = {
+// Default empty stats
+const defaultAdminStats: AdminStats = {
   users: {
-    total: 320,
-    byRole: [
-      { role: 'ADMIN', count: 2 },
-      { role: 'RW', count: 3 },
-      { role: 'RT', count: 15 },
-      { role: 'WARGA', count: 300 }
-    ]
+    total: 0,
+    byRole: []
   },
   residents: {
-    total: 300,
-    verified: 285,
-    byRT: [
-      { rtNumber: '001', count: 60 },
-      { rtNumber: '002', count: 55 },
-      { rtNumber: '003', count: 65 },
-      { rtNumber: '004', count: 70 },
-      { rtNumber: '005', count: 50 }
-    ]
+    total: 0,
+    verified: 0,
+    byRT: []
   },
   documents: {
-    total: 450,
-    pending: 12,
-    approved: 425,
-    rejected: 13
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0
   },
   complaints: {
-    total: 85,
-    open: 5,
-    inProgress: 10,
-    resolved: 70
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    resolved: 0
   },
   events: {
-    upcoming: 3,
-    past: 25
+    upcoming: 0,
+    past: 0
   },
   assistance: {
-    active: 2,
-    distributed: 8
+    active: 0,
+    distributed: 0
   },
   system: {
-    uptime: '15 days',
-    lastBackup: '2024-07-15',
+    uptime: '0 days',
+    lastBackup: '-',
     status: 'healthy'
   }
 };
-
-// Recent user activities
-const recentActivities = [
-  { id: 1, user: 'Budi Santoso', action: 'login', timestamp: '2024-07-16T08:30:00' },
-  { id: 2, user: 'Admin', action: 'approved document', timestamp: '2024-07-16T08:15:00' },
-  { id: 3, user: 'RT 001', action: 'created event', timestamp: '2024-07-16T07:45:00' },
-  { id: 4, user: 'Ani Wijaya', action: 'submitted complaint', timestamp: '2024-07-15T16:20:00' },
-  { id: 5, user: 'Admin', action: 'system backup', timestamp: '2024-07-15T00:00:00' }
-];
 
 // Format date helper
 const formatDate = (dateString: string) => {
@@ -127,22 +107,77 @@ const formatDate = (dateString: string) => {
 };
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<AdminStats>(mockAdminStats);
+  const [stats, setStats] = useState<AdminStats>(defaultAdminStats);
   const [loading, setLoading] = useState(false);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
 
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Uncomment and implement when API is ready
-        // const response = await api.get('/admin/dashboard/stats');
-        // setStats(response.data);
-        
-        // Using mock data for now
-        setStats(mockAdminStats);
+        // Fetch admin dashboard statistics
+        const [userStats, residentStats, documentStats, complaintStats, eventStats, assistanceStats] = await Promise.all([
+          api.get('/users/statistics'),
+          api.get('/residents/statistics'),
+          api.get('/documents/statistics'),
+          api.get('/complaints/statistics'),
+          api.get('/events/statistics'),
+          api.get('/social-assistance/statistics')
+        ]);
+
+        // Build comprehensive admin stats
+        const adminStats: AdminStats = {
+          users: {
+            total: userStats.data?.data?.total || 0,
+            byRole: userStats.data?.data?.byRole || []
+          },
+          residents: {
+            total: residentStats.data?.data?.total || 0,
+            verified: residentStats.data?.data?.verified || 0,
+            byRT: residentStats.data?.data?.byRT || []
+          },
+          documents: {
+            total: documentStats.data?.data?.total || 0,
+            pending: documentStats.data?.data?.pending || 0,
+            approved: documentStats.data?.data?.approved || 0,
+            rejected: documentStats.data?.data?.rejected || 0
+          },
+          complaints: {
+            total: complaintStats.data?.data?.total || 0,
+            open: complaintStats.data?.data?.open || 0,
+            inProgress: complaintStats.data?.data?.inProgress || 0,
+            resolved: complaintStats.data?.data?.resolved || 0
+          },
+          events: {
+            upcoming: eventStats.data?.data?.upcoming || 0,
+            past: eventStats.data?.data?.past || 0
+          },
+          assistance: {
+            active: assistanceStats.data?.data?.active || 0,
+            distributed: assistanceStats.data?.data?.distributed || 0
+          },
+          system: {
+            uptime: '15 days', // This would come from system API
+            lastBackup: new Date().toISOString().split('T')[0], // Current date as placeholder
+            status: 'healthy'
+          }
+        };
+
+        setStats(adminStats);
+
+        // Fetch recent activities
+        try {
+          const activitiesResponse = await api.get('/admin/activities/recent');
+          setRecentActivities(activitiesResponse.data?.data || []);
+        } catch (err) {
+          console.error('Failed to fetch recent activities:', err);
+          setRecentActivities([]);
+        }
+
       } catch (error) {
         console.error('Failed to fetch admin dashboard data:', error);
+        setStats(defaultAdminStats);
       } finally {
         setLoading(false);
       }
@@ -321,20 +356,27 @@ export default function AdminDashboard() {
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Aktivitas Terbaru</h2>
         <div className="space-y-4">
-          {recentActivities.map((activity) => (
-            <div key={activity.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                <FiActivity className="h-5 w-5 text-blue-500" />
-              </div>
-              <div className="flex-grow">
-                <div className="flex justify-between">
-                  <p className="font-medium">{activity.user}</p>
-                  <p className="text-sm text-gray-500">{formatDate(activity.timestamp)}</p>
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity) => (
+              <div key={activity.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                  <FiActivity className="h-5 w-5 text-blue-500" />
                 </div>
-                <p className="text-gray-600">{activity.action}</p>
+                <div className="flex-grow">
+                  <div className="flex justify-between">
+                    <p className="font-medium">{activity.user}</p>
+                    <p className="text-sm text-gray-500">{formatDate(activity.timestamp)}</p>
+                  </div>
+                  <p className="text-gray-600">{activity.action}</p>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <FiActivity className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-500">Belum ada aktivitas terbaru</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 

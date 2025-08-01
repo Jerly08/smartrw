@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { NotificationType, NotificationPriority } from '@/lib/types/notification';
 import { 
@@ -15,7 +15,8 @@ import {
   FiFilter, 
   FiRefreshCw,
   FiUser,
-  FiUsers
+  FiUsers,
+  FiBell
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -42,6 +43,87 @@ export default function NotificationsPage() {
 
   const [selectedType, setSelectedType] = useState<NotificationType | ''>('');
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+
+  // Role-based notification filtering
+  const roleBasedNotifications = useMemo(() => {
+    if (!user) return [];
+    
+    return notifications.filter(notification => {
+      switch (user.role) {
+        case 'ADMIN':
+          // Admin receives all notifications from RW, RT, and warga
+          return true;
+          
+        case 'RW':
+          // RW receives notifications from RT and warga in their wilayah
+          // This would typically check against user's RW number
+          // For now, show all relevant notification types except admin-only
+          return ['DOCUMENT', 'COMPLAINT', 'EVENT', 'SOCIAL_ASSISTANCE', 'FORUM', 'ANNOUNCEMENT', 'SYSTEM'].includes(notification.type);
+          
+        case 'RT':
+          // RT receives notifications from warga in their wilayah
+          switch (notification.type) {
+            case 'DOCUMENT':
+              return true; // Document verification requests from residents
+            case 'COMPLAINT':
+              return true; // Complaints from residents in RT area
+            case 'SOCIAL_ASSISTANCE':
+              return true; // Social assistance verification requests
+            case 'SYSTEM':
+              // Check if it's a resident verification notification
+              try {
+                const data = notification.data ? JSON.parse(notification.data) : {};
+                return data.residentId != null;
+              } catch (e) {
+                return false;
+              }
+            case 'EVENT':
+              return true; // Events relevant to RT
+            case 'ANNOUNCEMENT':
+              return true; // Announcements from RW/Admin
+            case 'FORUM':
+              return true; // Forum posts in RT area
+            default:
+              return false;
+          }
+          
+        case 'WARGA':
+          // Warga only sees personal notifications or announcements for their area
+          switch (notification.type) {
+            case 'DOCUMENT':
+              // Only their own document status updates
+              try {
+                const data = notification.data ? JSON.parse(notification.data) : {};
+                return data.userId === user.id;
+              } catch (e) {
+                return true; // Show all document notifications if parsing fails
+              }
+            case 'EVENT':
+              return true; // Events in their area
+            case 'ANNOUNCEMENT':
+              return true; // General announcements
+            case 'FORUM':
+              return true; // Forum discussions
+            case 'SOCIAL_ASSISTANCE':
+              // Only notifications about their assistance applications
+              try {
+                const data = notification.data ? JSON.parse(notification.data) : {};
+                return data.userId === user.id;
+              } catch (e) {
+                return true; // Show all assistance notifications if parsing fails
+              }
+            case 'SYSTEM':
+              // System notifications addressed to them
+              return true;
+            default:
+              return false;
+          }
+          
+        default:
+          return false;
+      }
+    });
+  }, [user, notifications]);
 
   // Apply filters
   const applyFilters = () => {
@@ -146,6 +228,11 @@ export default function NotificationsPage() {
     }
   };
 
+  // Get role-specific unread count
+  const roleBasedUnreadCount = useMemo(() => {
+    return roleBasedNotifications.filter(n => !n.isRead).length;
+  }, [roleBasedNotifications]);
+
   // Get notification description based on type for RT
   const getNotificationDescription = (notification: any, data: any) => {
     if (user?.role === 'RT') {
@@ -171,13 +258,26 @@ export default function NotificationsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{getPageTitle()}</h1>
+        <div>
+          <h1 className="text-2xl font-bold">{getPageTitle()}</h1>
+          <div className="flex items-center space-x-4 mt-2">
+            <span className="text-sm text-gray-600">
+              Total: {roleBasedNotifications.length} notifikasi
+            </span>
+            {roleBasedUnreadCount > 0 && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                <FiBell className="w-3 h-3 mr-1" />
+                {roleBasedUnreadCount} belum dibaca
+              </span>
+            )}
+          </div>
+        </div>
         
         <div className="flex space-x-2">
           <button
             onClick={() => markAllAsRead()}
             className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            disabled={unreadCount === 0}
+            disabled={roleBasedUnreadCount === 0}
           >
             <FiCheck className="mr-1" />
             <span>Tandai Semua Dibaca</span>
@@ -262,15 +362,15 @@ export default function NotificationsPage() {
             Coba Lagi
           </button>
         </div>
-      ) : notifications.length === 0 ? (
+      ) : roleBasedNotifications.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 text-gray-800 rounded-lg p-8 text-center">
           <FiInfo className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium">Tidak Ada Notifikasi</h3>
-          <p className="text-gray-600 mt-2">Belum ada notifikasi yang sesuai dengan filter yang dipilih</p>
+          <p className="text-gray-600 mt-2">Belum ada notifikasi yang sesuai dengan role dan filter yang dipilih</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {notifications.map((notification) => {
+          {roleBasedNotifications.map((notification) => {
             // Parse JSON data if it exists
             let data = {};
             try {

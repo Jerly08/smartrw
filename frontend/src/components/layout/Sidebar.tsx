@@ -14,8 +14,13 @@ import {
   FiMessageSquare,
   FiSettings,
   FiBell,
-  FiCheckSquare
+  FiCheckSquare,
+  FiX
 } from 'react-icons/fi';
+
+interface SidebarProps {
+  onClose?: () => void;
+}
 
 interface NavItemProps {
   href: string;
@@ -23,6 +28,7 @@ interface NavItemProps {
   label: string;
   active?: boolean;
   role?: string[];
+  onClick?: () => void;
 }
 
 const NavItem = ({ href, icon, label, active, role }: NavItemProps) => {

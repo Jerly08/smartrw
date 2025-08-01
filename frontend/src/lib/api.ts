@@ -911,149 +911,66 @@ export const forumApi = {
 export const notificationApi = {
   // Get all notifications with filtering and pagination
   getAllNotifications: async (params: { page?: number; limit?: number } & NotificationFilter = {}) => {
-    // Mock implementation for development
-    console.log('Using mock notification API');
-    
-    // Generate mock notifications
-    const mockNotifications: Notification[] = [
-      {
-        id: 1,
-        type: NotificationType.DOCUMENT,
-        title: 'Dokumen Memerlukan Verifikasi RT',
-        message: 'Dokumen Surat Pengantar KTP dari Ahmad Fauzi memerlukan verifikasi Anda',
-        isRead: false,
-        priority: NotificationPriority.HIGH,
-        createdAt: new Date().toISOString(),
-        data: JSON.stringify({
-          documentId: 101,
-          documentType: 'PENGANTAR_SKCC',
-          documentSubject: 'Permohonan Pengantar KTP',
-          requesterName: 'Ahmad Fauzi',
-          requesterNik: '3175020501990003',
-        }),
-        documentId: 101
-      },
-      {
-        id: 2,
-        type: NotificationType.COMPLAINT,
-        title: 'Pengaduan Baru',
-        message: 'Pengaduan baru tentang kerusakan jalan di RT Anda',
-        isRead: false,
-        priority: NotificationPriority.NORMAL,
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        data: JSON.stringify({
-          complaintId: 201,
-          complaintTitle: 'Kerusakan Jalan',
-          complaintCategory: 'INFRASTRUKTUR',
-        }),
-        complaintId: 201
-      },
-      {
-        id: 3,
-        type: NotificationType.SYSTEM,
-        title: 'Verifikasi Warga Baru',
-        message: 'Warga baru Siti Rahayu memerlukan verifikasi Anda',
-        isRead: false,
-        priority: NotificationPriority.HIGH,
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        data: JSON.stringify({
-          residentId: 301,
-          residentName: 'Siti Rahayu',
-          residentNik: '3175024309980002',
-          residentAddress: 'Jl. Mawar No. 17 RT 003/002',
-        })
-      },
-      {
-        id: 4,
-        type: NotificationType.SOCIAL_ASSISTANCE,
-        title: 'Verifikasi Bantuan Sosial',
-        message: 'Calon penerima bantuan BLT memerlukan verifikasi Anda',
-        isRead: false,
-        priority: NotificationPriority.NORMAL,
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        data: JSON.stringify({
-          assistanceId: 401,
-          assistanceName: 'Bantuan Langsung Tunai',
-          assistanceType: 'BLT',
-          recipientId: 501,
-          residentName: 'Agus Setiawan',
-          residentNik: '3175020501960003',
-          residentAddress: 'Jl. Mawar No. 20 RT 003/002',
-        }),
-        socialAssistanceId: 401
-      },
-      {
-        id: 5,
-        type: NotificationType.EVENT,
-        title: 'Kegiatan Baru',
-        message: 'Kegiatan Kerja Bakti akan dilaksanakan pada Minggu, 21 Juli 2024',
-        isRead: true,
-        priority: NotificationPriority.NORMAL,
-        createdAt: new Date(Date.now() - 259200000).toISOString(),
-        data: JSON.stringify({
-          eventId: 501,
-          eventTitle: 'Kerja Bakti RT 003',
-          eventDate: '2024-07-21T07:00:00',
-          eventLocation: 'Jl. Mawar RT 003/002',
-        }),
-        eventId: 501
-      }
-    ];
-    
-    // Apply filters
-    let filteredNotifications = [...mockNotifications];
-    
-    if (params.type) {
-      filteredNotifications = filteredNotifications.filter(n => n.type === params.type);
+    try {
+      const response = await api.get('/notifications', { params });
+      return response.data.data as NotificationResponse;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      // Return empty result on error
+      return {
+        notifications: [],
+        pagination: {
+          page: params.page || 1,
+          limit: params.limit || 10,
+          total: 0,
+          totalPages: 0,
+        }
+      };
     }
-    
-    if (params.isRead !== undefined) {
-      filteredNotifications = filteredNotifications.filter(n => n.isRead === params.isRead);
-    }
-    
-    // Apply pagination
-    const page = params.page || 1;
-    const limit = params.limit || 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);
-    
-    return {
-      notifications: paginatedNotifications,
-      pagination: {
-        page,
-        limit,
-        total: filteredNotifications.length,
-        totalPages: Math.ceil(filteredNotifications.length / limit),
-      }
-    };
   },
 
   // Get unread notification count
   getUnreadCount: async () => {
-    // Mock implementation
-    return 4; // Mock unread count
+    try {
+      const response = await api.get('/notifications/unread/count');
+      return response.data.data.count;
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      return 0;
+    }
   },
 
   // Mark notification as read
   markAsRead: async (id: number) => {
-    // Mock implementation
-    console.log(`Marking notification ${id} as read`);
-    return true;
+    try {
+      const response = await api.patch(`/notifications/${id}/read`);
+      return response.data.status === 'success';
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return false;
+    }
   },
 
   // Mark all notifications as read
   markAllAsRead: async () => {
-    // Mock implementation
-    console.log('Marking all notifications as read');
-    return true;
+    try {
+      const response = await api.patch('/notifications/read-all');
+      return response.data.status === 'success';
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      return false;
+    }
   },
 
   // Delete notification
   deleteNotification: async (id: number) => {
-    // Mock implementation
-    console.log(`Deleting notification ${id}`);
-    return true;
+    try {
+      const response = await api.delete(`/notifications/${id}`);
+      return response.data.status === 'success';
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      return false;
+    }
   }
 };
 
@@ -1065,30 +982,8 @@ export const dashboardApi = {
       const response = await api.get('/rt/dashboard/stats');
       return response.data.data as RTDashboardStats;
     } catch (error) {
-      console.log('Using mock dashboard stats');
-      // Mock data for development
-      const mockStats: RTDashboardStats = {
-        rtNumber: '003',
-        rwNumber: '002',
-        residents: {
-          total: 65,
-          verified: 63,
-          unverified: 2,
-          families: 18
-        },
-        documents: {
-          pending: 3,
-          total: 25
-        },
-        complaints: {
-          open: 2,
-          total: 8
-        },
-        events: {
-          upcoming: 1
-        }
-      };
-      return mockStats;
+      console.error('Error fetching RT dashboard stats:', error);
+      throw error;
     }
   },
 
@@ -1101,40 +996,8 @@ export const dashboardApi = {
         pagination: { page: number, limit: number, total: number, totalPages: number }
       };
     } catch (error) {
-      console.log('Using mock pending verifications');
-      // Mock data for development
-      const mockVerifications: PendingVerification[] = [
-        {
-          id: 1,
-          residentId: 101,
-          name: 'Ahmad Fauzi',
-          nik: '3175020501990003',
-          address: 'Jl. Mawar No. 15 RT 003/002',
-          rtNumber: '003',
-          rwNumber: '002',
-          submittedAt: '2024-07-15T10:30:00'
-        },
-        {
-          id: 2,
-          residentId: 102,
-          name: 'Siti Rahayu',
-          nik: '3175024309980002',
-          address: 'Jl. Mawar No. 17 RT 003/002',
-          rtNumber: '003',
-          rwNumber: '002',
-          submittedAt: '2024-07-14T14:15:00'
-        }
-      ];
-      
-      return {
-        verifications: mockVerifications,
-        pagination: {
-          page: params.page || 1,
-          limit: params.limit || 10,
-          total: mockVerifications.length,
-          totalPages: 1
-        }
-      };
+      console.error('Error fetching pending verifications:', error);
+      throw error;
     }
   },
 
@@ -1147,47 +1010,8 @@ export const dashboardApi = {
         pagination: { page: number, limit: number, total: number, totalPages: number }
       };
     } catch (error) {
-      console.log('Using mock pending documents');
-      // Mock data for development
-      const mockDocuments: PendingDocument[] = [
-        {
-          id: 1,
-          documentId: 201,
-          type: 'Surat Pengantar KTP',
-          requester: 'Budi Santoso',
-          requesterNik: '3175020501980001',
-          subject: 'Permohonan Pengantar KTP',
-          submittedAt: '2024-07-16T09:30:00'
-        },
-        {
-          id: 2,
-          documentId: 202,
-          type: 'Surat Keterangan Domisili',
-          requester: 'Rina Wati',
-          requesterNik: '3175024309970002',
-          subject: 'Permohonan Keterangan Domisili',
-          submittedAt: '2024-07-15T15:45:00'
-        },
-        {
-          id: 3,
-          documentId: 203,
-          type: 'Surat Keterangan Tidak Mampu',
-          requester: 'Agus Setiawan',
-          requesterNik: '3175020501960003',
-          subject: 'Permohonan SKTM untuk Pendidikan',
-          submittedAt: '2024-07-15T11:20:00'
-        }
-      ];
-      
-      return {
-        documents: mockDocuments,
-        pagination: {
-          page: params.page || 1,
-          limit: params.limit || 10,
-          total: mockDocuments.length,
-          totalPages: 1
-        }
-      };
+      console.error('Error fetching pending documents:', error);
+      throw error;
     }
   },
 
@@ -1200,29 +1024,8 @@ export const dashboardApi = {
         pagination: { page: number, limit: number, total: number, totalPages: number }
       };
     } catch (error) {
-      console.log('Using mock upcoming events');
-      // Mock data for development
-      const mockEvents: UpcomingEvent[] = [
-        {
-          id: 1,
-          title: 'Kerja Bakti RT 003',
-          description: 'Kerja bakti membersihkan lingkungan RT 003',
-          date: '2024-07-21T07:00:00',
-          location: 'Jl. Mawar RT 003/002',
-          participants: 15,
-          isRTEvent: true
-        }
-      ];
-      
-      return {
-        events: mockEvents,
-        pagination: {
-          page: params.page || 1,
-          limit: params.limit || 10,
-          total: mockEvents.length,
-          totalPages: 1
-        }
-      };
+      console.error('Error fetching upcoming events:', error);
+      throw error;
     }
   },
 
