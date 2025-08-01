@@ -28,7 +28,7 @@ export const registerUser = async (userData: RegisterUserInput): Promise<{ user:
   });
 
   if (existingUser) {
-    throw new ApiError('Email already in use', 400);
+    throw new ApiError('Maaf, email tersebut telah terdaftar', 400);
   }
 
   // Hash password
@@ -68,14 +68,14 @@ export const loginUser = async (email: string, password: string): Promise<{ user
   });
 
   if (!user) {
-    throw new ApiError('Invalid email or password', 401);
+    throw new ApiError('Email atau password salah', 401);
   }
 
   // Check password
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
-    throw new ApiError('Invalid email or password', 401);
+    throw new ApiError('Email atau password salah', 401);
   }
 
   // Generate JWT token
@@ -129,7 +129,7 @@ export const updateUserProfile = async (userId: number, data: UpdateProfileInput
     });
 
     if (existingUser && existingUser.id !== userId) {
-      throw new ApiError('Email already in use', 400);
+      throw new ApiError('Maaf, email tersebut telah terdaftar', 400);
     }
   }
 
