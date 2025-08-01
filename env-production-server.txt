@@ -1,0 +1,22 @@
+# Production Environment Variables for SmartRW
+# IMPORTANT: Ganti IP_VPS_ANDA dengan IP VPS yang sebenarnya
+
+# MySQL Database
+MYSQL_ROOT_PASSWORD=SuperSecureRootPassword2024!@#
+MYSQL_DATABASE=smart_rw
+MYSQL_USER=smart_rw_user
+MYSQL_PASSWORD=SecureDbPassword2024!@#
+DATABASE_URL="mysql://smart_rw_user:SecureDbPassword2024!@#@mysql:3306/smart_rw"
+
+# Backend Configuration
+JWT_SECRET=YourVeryLongAndSecureJWTSecretKeyAtLeast32CharactersLong123!@#
+PORT=4000
+UPLOAD_PATH=/app/uploads
+NODE_ENV=production
+
+# Frontend Configuration
+# Ganti IP_VPS_ANDA dengan IP VPS yang sebenarnya
+NEXT_PUBLIC_API_URL=http://IP_VPS_ANDA/api
+
+# Contoh jika IP VPS Anda adalah 192.168.1.100:
+# NEXT_PUBLIC_API_URL=http://192.168.1.100/api

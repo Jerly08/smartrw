@@ -30,6 +30,12 @@ services:
     restart: unless-stopped
     env_file:
       - .env.production
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=${PORT}
+      - NODE_ENV=${NODE_ENV}
+      - UPLOAD_PATH=${UPLOAD_PATH}
     command: sh -c "npx prisma migrate deploy && npm start"
     volumes:
       - backend_uploads:/app/uploads
