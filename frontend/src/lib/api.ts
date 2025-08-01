@@ -326,6 +326,12 @@ export const residentApi = {
     const response = await api.get(`/residents/${residentId}/documents`);
     return response.data.data.documents as ResidentDocumentInfo[];
   },
+
+  // Get residents for specific RT - used in RT dashboard
+  getResidentsForRT: async (params: { page?: number; limit?: number; search?: string } = {}) => {
+    const response = await api.get('/residents/rt-residents', { params });
+    return response.data.data;
+  },
 };
 
 // Document API functions

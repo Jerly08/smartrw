@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
 import ToastWrapper from '@/components/ui/ToastWrapper';
 
-const inter = Inter({ subsets: ['latin'] });
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  fallback: ['system-ui', 'arial']
+});
 
 export const metadata: Metadata = {
   title: 'Smart RW - Sistem Informasi Rukun Warga',
@@ -18,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body className={inter.className}>
+      <body className={poppins.className}>
         <AuthProvider>
           {children}
           <ToastWrapper />

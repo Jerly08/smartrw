@@ -549,3 +549,42 @@ export const uploadResidentDocument = async (req: Request, res: Response, next: 
     next(error);
   }
 };
+
+// Get residents for specific RT - used in RT dashboard
+export const getResidentsForRT = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    const { page = '1', limit = '10', search } = req.query;
+    
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    
+    if (isNaN(pageNum) || isNaN(limitNum)) {
+      throw new ApiError('Invalid pagination parameters', 400);
+    }
+    
+    const rtUserId = req.user.id;
+    
+    const result = await residentService.getResidentsForRT(rtUserId, {
+      page: pageNum,
+      limit: limitNum,
+      search: search as string,
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      results: result.residents.length,
+      totalPages: result.totalPages,
+      currentPage: pageNum,
+      totalItems: result.totalItems,
+      data: {
+        residents: result.residents,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

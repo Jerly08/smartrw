@@ -19,6 +19,14 @@ router.get(
   residentController.getPendingVerification
 );
 
+// Get residents for specific RT - used in RT dashboard
+router.get(
+  '/rt-residents',
+  authenticate,
+  authorize(['RT']),
+  residentController.getResidentsForRT
+);
+
 router.get('/:id', authenticate, checkResidentAccess, residentController.getResidentById);
 
 // Get resident documents

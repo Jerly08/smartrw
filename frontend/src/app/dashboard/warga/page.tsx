@@ -868,6 +868,7 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
         error={errors.email}
       />
       
+      
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
@@ -920,6 +921,50 @@ export default function WargaManagementPage() {
   const [selectedRt, setSelectedRt] = useState('all');
   const [rtList, setRtList] = useState<RTItem[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Advanced filtering for Admin only
+  const [selectedRW, setSelectedRW] = useState('all'); // New RW filter
+  const [selectedAdvancedRT, setSelectedAdvancedRT] = useState('all'); // New advanced RT filter
+  const [rwList, setRwList] = useState<{number: string, count: number}[]>([]); // RW list from data
+  const [allRtList, setAllRtList] = useState<{number: string, rwNumber?: string, count: number}[]>([]); // All RT list from data
+
+  // Function to extract RW and RT data from residents for Admin filtering
+  const extractRWAndRTData = (residents: Resident[]) => {
+    // Extract unique RW numbers and their counts
+    const rwMap = residents.reduce((acc, resident) => {
+      if (resident.rwNumber) {
+        acc[resident.rwNumber] = (acc[resident.rwNumber] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const rwData = Object.entries(rwMap).map(([number, count]) => ({
+      number,
+      count
+    }));
+
+    // Extract unique RT numbers with their RW associations and counts
+    const rtMap = residents.reduce((acc, resident) => {
+      if (resident.rtNumber) {
+        const key = `${resident.rtNumber}-${resident.rwNumber || ''}`;
+        if (!acc[key]) {
+          acc[key] = {
+            number: resident.rtNumber,
+            rwNumber: resident.rwNumber,
+            count: 0
+          };
+        }
+        acc[key].count += 1;
+      }
+      return acc;
+    }, {} as Record<string, {number: string, rwNumber?: string, count: number}>);
+
+    const rtData = Object.values(rtMap);
+
+    // Update state
+    setRwList(rwData);
+    setAllRtList(rtData);
+  };
 
   // Fetch data on component mount
   useEffect(() => {
@@ -976,56 +1021,32 @@ export default function WargaManagementPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        let residentResponse;
         if (user?.role === 'ADMIN') {
-          // ADMIN sees RW data only
-          const rwResponse = await rwApi.getAllRWUsers();
-          const transformedRWData = (rwResponse.rwUsers || []).map((rw: any) => ({
-            id: rw.id,
-            fullName: rw.name,
-            nik: `RW${rw.number}000000000000`,
-            noKK: `RW${rw.number}0000000000000000`,
-            address: rw.address || `RW ${rw.number}`,
-            rtNumber: rw.number,
-            rwNumber: rw.number,
-            familyRole: 'KEPALA_KELUARGA',
-            isVerified: rw.isActive ?? true,
-            phoneNumber: rw.phoneNumber || '',
-            email: rw.email || ''
-          }));
-          setResidents(transformedRWData);
-          setFilteredResidents(transformedRWData);
+          residentResponse = await residentApi.getAllResidents({ limit: 1000 });
         } else if (user?.role === 'RW') {
-          // RW sees RT data only
-          const rtResponse = await rtApi.getAllRTs({ limit: 50 });
-          const transformedRTData = (rtResponse.rts || []).map((rt: any) => ({
-            id: rt.id,
-            fullName: rt.name || `Ketua RT ${rt.number}`,
-            nik: `RT${rt.number}000000000000`,
-            noKK: `RT${rt.number}000000000000`,
-            address: rt.address || `RT ${rt.number}`,
-            rtNumber: rt.number,
-            rwNumber: '000', // Default for RT
-            familyRole: 'KEPALA_KELUARGA',
-            isVerified: rt.isActive ?? true,
-            phoneNumber: rt.phoneNumber || '',
-            email: rt.email || ''
-          }));
-          setResidents(transformedRTData);
-          setFilteredResidents(transformedRTData);
-        } else {
-          // Other roles see regular resident data
-          const residentResponse = await residentApi.getAllResidents({
-            page: 1,
-            limit: 100
+          residentResponse = await residentApi.getAllResidents({
+            limit: 1000,
+            // Use user's RW number to filter
+            rwNumber: user.resident?.rwNumber
           });
-          setResidents(residentResponse.residents || []);
-          setFilteredResidents(residentResponse.residents || []);
+        } else if (user?.role === 'RT') {
+          // Use the new RT-specific endpoint that only returns residents who chose this RT
+          residentResponse = await residentApi.getResidentsForRT({ limit: 1000 });
+        } else {
+          residentResponse = { residents: [] };
         }
-        
-        // Fetch RT list for filtering (only needed for non-ADMIN roles)
-        if (user?.role !== 'ADMIN') {
-          await fetchRTList();
+
+        setResidents(residentResponse.residents || []);
+        setFilteredResidents(residentResponse.residents || []);
+
+        // For Admin, extract unique RW and RT data from residents
+        if (user?.role === 'ADMIN') {
+          extractRWAndRTData(residentResponse.residents || []);
         }
+
+        // Fetch RT list for filtering
+        await fetchRTList();
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Gagal memuat data');
@@ -1370,14 +1391,44 @@ export default function WargaManagementPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>Data Warga</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Data Warga</CardTitle>
+            {/* Role Badge */}
+            <div className="flex items-center gap-2">
+              <Badge 
+                variant={user?.role === 'ADMIN' ? 'default' : user?.role === 'RW' ? 'secondary' : 'outline'}
+                className={
+                  user?.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
+                  user?.role === 'RW' ? 'bg-blue-100 text-blue-800' :
+                  user?.role === 'RT' ? 'bg-green-100 text-green-800' :
+                  'bg-gray-100 text-gray-800'
+                }
+              >
+                {user?.role === 'ADMIN' ? '👑 Admin' :
+                 user?.role === 'RW' ? '🏘️ RW' :
+                 user?.role === 'RT' ? '🏠 RT' :
+                 '👤 ' + (user?.role || 'User')}
+              </Badge>
+              {(user?.role === 'RW' || user?.role === 'RT') && (
+                <span className="text-sm text-gray-600">
+                  {user?.role === 'RW' ? `RW ${user.resident?.rwNumber || ''}` :
+                   user?.role === 'RT' ? `RT ${user.resident?.rtNumber || ''}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <div className="relative flex-1">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Cari nama, NIK, atau No. KK..."
+                placeholder={
+                  user?.role === 'ADMIN' ? "Cari nama, NIK, atau No. KK (Semua RW/RT)..." :
+                  user?.role === 'RW' ? `Cari nama, NIK, atau No. KK (RW ${user.resident?.rwNumber || ''})...` :
+                  user?.role === 'RT' ? `Cari nama, NIK, atau No. KK (RT ${user.resident?.rtNumber || ''})...` :
+                  "Cari nama, NIK, atau No. KK..."
+                }
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
@@ -1394,15 +1445,31 @@ export default function WargaManagementPage() {
                   <SelectItem value="unverified">Belum Terverifikasi</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={selectedRt} onValueChange={setSelectedRt}>
+              {/* RT Filter - Only show for Admin and RW */}
+              {(user?.role === 'ADMIN' || user?.role === 'RW') && (
+                <Select value={selectedRt} onValueChange={setSelectedRt}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Pilih RT" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {user?.role === 'ADMIN' ? 'Semua RT' : `Semua RT di RW ${user.resident?.rwNumber || ''}`}
+                    </SelectItem>
+                    {rtList.map(rt => (
+                      <SelectItem key={rt.id} value={rt.number}>{`RT ${rt.number}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {/* Family Role Filter */}
+              <Select value={activeTab === 'kepala-keluarga' ? 'kepala-keluarga' : activeTab === 'anggota-keluarga' ? 'anggota-keluarga' : 'all'} onValueChange={(value) => setActiveTab(value)}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Pilih RT" />
+                  <SelectValue placeholder="Filter Peran" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua RT</SelectItem>
-                  {rtList.map(rt => (
-                    <SelectItem key={rt.id} value={rt.number}>{`RT ${rt.number}`}</SelectItem>
-                  ))}
+                  <SelectItem value="all">Semua Peran</SelectItem>
+                  <SelectItem value="kepala-keluarga">Kepala Keluarga</SelectItem>
+                  <SelectItem value="anggota-keluarga">Anggota Keluarga</SelectItem>
                 </SelectContent>
               </Select>
             </div>

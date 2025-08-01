@@ -45,40 +45,12 @@ export default function DocumentTemplatesPage() {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true);
-      // This would be replaced with an actual API call when implemented
+      // TODO: Replace with actual API call when backend is ready
       // const response = await documentApi.getTemplates();
       // setTemplates(response.templates);
       
-      // Placeholder data for UI development
-      setTemplates([
-        {
-          id: 1,
-          name: 'Template Surat Domisili',
-          type: DocumentType.DOMISILI,
-          content: '<p>Ini adalah template surat domisili</p>',
-          isDefault: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          name: 'Template Surat Pengantar SKCK',
-          type: DocumentType.PENGANTAR_SKCK,
-          content: '<p>Ini adalah template surat pengantar SKCK</p>',
-          isDefault: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: 3,
-          name: 'Template Surat Keterangan Tidak Mampu',
-          type: DocumentType.TIDAK_MAMPU,
-          content: '<p>Ini adalah template surat keterangan tidak mampu</p>',
-          isDefault: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
+      // Empty array for now - will be populated with real template files
+      setTemplates([]);
     } catch (error) {
       console.error('Error fetching templates:', error);
       setError('Gagal memuat template dokumen');

@@ -26,6 +26,36 @@ const getAllRTs = (filters, userContext) => __awaiter(void 0, void 0, void 0, fu
     if (!includeInactive) {
         where.isActive = true;
     }
+    // Filter RTs by RW context for RW users
+    if (userContext.role === 'RW') {
+        // Get RW number from logged-in RW user's resident profile
+        const rwUserResident = yield prisma.resident.findFirst({
+            where: { userId: userContext.id },
+        });
+        if (rwUserResident && rwUserResident.rwNumber) {
+            // Filter residents by RW number and get their RT IDs
+            const rtIds = yield prisma.resident.findMany({
+                where: { rwNumber: rwUserResident.rwNumber },
+                select: { rtId: true },
+                distinct: ['rtId'],
+            });
+            const rtIdArray = rtIds.map(r => r.rtId).filter(id => id !== null);
+            if (rtIdArray.length > 0) {
+                where.id = { in: rtIdArray };
+            }
+            else {
+                // No RTs found for this RW, return empty result
+                return {
+                    rts: [],
+                    totalItems: 0,
+                    totalPages: 0,
+                };
+            }
+        }
+        else {
+            throw new error_middleware_1.ApiError('RW user profile not found. Please ensure the RW user has a valid resident profile.', 400);
+        }
+    }
     if (search) {
         where.OR = [
             { number: { contains: search } },
@@ -105,6 +135,19 @@ const createRT = (rtData, userContext) => __awaiter(void 0, void 0, void 0, func
     if (!['RW', 'ADMIN'].includes(userContext.role)) {
         throw new error_middleware_1.ApiError('Insufficient permissions', 403);
     }
+    // Get RW number from logged-in RW user's resident profile
+    let rwNumber = '001'; // Default fallback
+    if (userContext.role === 'RW') {
+        const rwUserResident = yield prisma.resident.findFirst({
+            where: { userId: userContext.id },
+        });
+        if (rwUserResident && rwUserResident.rwNumber) {
+            rwNumber = rwUserResident.rwNumber;
+        }
+        else {
+            throw new error_middleware_1.ApiError('RW user profile not found. Please ensure the RW user has a valid resident profile.', 400);
+        }
+    }
     // Check if RT number already exists
     const existingRT = yield prisma.rT.findUnique({
         where: { number: rtData.number },
@@ -123,7 +166,7 @@ const createRT = (rtData, userContext) => __awaiter(void 0, void 0, void 0, func
     if (existingUser) {
         throw new error_middleware_1.ApiError('Email already exists. Please use a different email for RT account.', 400);
     }
-    // Use transaction to create both RT and User
+    // Use transaction to create RT, User, and Resident profile
     const result = yield prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
         // Create RT user account
@@ -163,6 +206,33 @@ const createRT = (rtData, userContext) => __awaiter(void 0, void 0, void 0, func
                         families: true,
                     },
                 },
+            },
+        });
+        // Create a resident profile for the RT user
+        // This is needed for the resident service to identify which RT area this user manages
+        yield tx.resident.create({
+            data: {
+                nik: `RT${rtData.number}${Date.now()}`, // Generate unique NIK for RT user
+                noKK: `RT${rtData.number}${Date.now()}`, // Generate unique KK for RT user
+                fullName: rtData.chairperson || `Ketua RT ${rtData.number}`,
+                gender: 'LAKI_LAKI', // Default gender
+                birthPlace: 'Indonesia',
+                birthDate: new Date('1980-01-01'), // Default birth date
+                address: rtData.address || `Wilayah RT ${rtData.number}`,
+                rtNumber: rtData.number,
+                rwNumber: rwNumber, // Use RW number from logged-in user's context
+                religion: 'ISLAM', // Default religion
+                maritalStatus: 'KAWIN', // Default marital status
+                occupation: 'Ketua RT',
+                phoneNumber: rtData.phoneNumber,
+                email: rtData.email,
+                isVerified: true, // RT users are automatically verified
+                verifiedBy: 'SYSTEM',
+                verifiedAt: new Date(),
+                domicileStatus: 'TETAP',
+                userId: rtUser.id,
+                rtId: newRT.id,
+                familyRole: 'KEPALA_KELUARGA',
             },
         });
         return { rt: newRT, credentials: { email: rtEmail, password: rtPassword } };
