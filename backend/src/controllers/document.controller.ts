@@ -124,7 +124,17 @@ export const createDocument = async (req: Request, res: Response, next: NextFunc
         document: newDocument,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error creating document:', error);
+    
+    // Handle specific ApiError
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        status: 'error',
+        message: error.message,
+      });
+    }
+    
     next(error);
   }
 };
@@ -141,6 +151,12 @@ async function processAttachments(files: any[]): Promise<string[]> {
   const attachments: string[] = [];
   
   for (const file of files) {
+    // Check if file has buffer (memory storage)
+    if (!file.buffer) {
+      console.warn('File buffer is undefined, skipping file:', file.originalname);
+      continue;
+    }
+    
     // Generate unique filename
     const fileName = `${uuidv4()}-${file.originalname}`;
     const filePath = path.join(uploadDir, fileName);
@@ -296,19 +312,28 @@ export const getDocumentStatistics = async (req: Request, res: Response, next: N
     
     // For RT, only show documents from their RT
     if (req.user.role === 'RT') {
-      // Get RT user's resident data to determine their RT number
+      // Get RT user's data to determine their RT number
       const rtUserResident = await prisma.user.findUnique({
         where: { id: req.user.id },
         include: {
-          resident: true
+          resident: true,
+          rt: true
         }
       });
       
+      // Get RT number from either resident profile or RT table
+      let rtNumber: string | null = null;
       if (rtUserResident?.resident?.rtNumber) {
+        rtNumber = rtUserResident.resident.rtNumber;
+      } else if (rtUserResident?.rt?.number) {
+        rtNumber = rtUserResident.rt.number;
+      }
+      
+      if (rtNumber) {
         whereCondition = {
           requester: {
             resident: {
-              rtNumber: rtUserResident.resident.rtNumber
+              rtNumber: rtNumber
             }
           }
         };

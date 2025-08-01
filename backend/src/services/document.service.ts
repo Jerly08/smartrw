@@ -136,6 +136,22 @@ export const getDocumentById = async (id: number) => {
 
 // Create new document
 export const createDocument = async (data: DocumentInput, requesterId: number) => {
+  // Check if user has resident data
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    include: {
+      resident: true,
+    },
+  });
+  
+  if (!requester) {
+    throw new ApiError('User not found', 404);
+  }
+  
+  if (!requester.resident) {
+    throw new ApiError('User must have resident profile to create document', 400);
+  }
+  
   // Create document
   const document = await prisma.document.create({
     data: {
@@ -169,7 +185,12 @@ export const createDocument = async (data: DocumentInput, requesterId: number) =
   });
 
   // Send notification to RT users
-  await createDocumentNotificationsForRT(document);
+  try {
+    await createDocumentNotificationsForRT(document);
+  } catch (error) {
+    console.error('Error creating document notifications for RT:', error);
+    // Don't fail the document creation if notification fails
+  }
   
   return document;
 };

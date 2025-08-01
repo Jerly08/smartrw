@@ -21,7 +21,8 @@ const createNotification = (data) => __awaiter(void 0, void 0, void 0, function*
             where: { id: data.userId },
         });
         if (!user) {
-            throw new error_middleware_1.ApiError('User not found', 404);
+            console.warn(`User ${data.userId} not found for notification`);
+            return null; // Don't throw error, just skip creating notification
         }
         // Create notification
         const notification = yield prisma.notification.create({
@@ -45,7 +46,8 @@ const createNotification = (data) => __awaiter(void 0, void 0, void 0, function*
     }
     catch (error) {
         console.error('Error creating notification:', error);
-        throw error;
+        // Don't throw error to prevent it from breaking the main process
+        return null;
     }
 });
 exports.createNotification = createNotification;

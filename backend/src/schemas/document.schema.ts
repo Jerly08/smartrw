@@ -47,11 +47,9 @@ export const updateDocumentSchema = z.object({
 
 // Process document schema (approve, reject, sign)
 export const processDocumentSchema = z.object({
-  body: z.object({
-    status: z.enum(documentStatuses),
-    rejectionReason: z.string().optional(),
-    notes: z.string().optional(),
-  }),
+  status: z.enum(documentStatuses),
+  rejectionReason: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 // Search documents schema

@@ -29,7 +29,8 @@ export const createNotification = async (data: CreateNotificationInput) => {
     });
 
     if (!user) {
-      throw new ApiError('User not found', 404);
+      console.warn(`User ${data.userId} not found for notification`);
+      return null; // Don't throw error, just skip creating notification
     }
 
     // Create notification
@@ -54,7 +55,8 @@ export const createNotification = async (data: CreateNotificationInput) => {
     return notification;
   } catch (error) {
     console.error('Error creating notification:', error);
-    throw error;
+    // Don't throw error to prevent it from breaking the main process
+    return null;
   }
 };
 

@@ -46,7 +46,19 @@ export default function CreateDocumentPage() {
       router.push('/dashboard/surat');
     } catch (err: any) {
       console.error('Error creating document:', err);
-      setError(err.response?.data?.message || 'Gagal mengajukan surat. Silakan coba lagi.');
+      
+      let errorMessage = 'Gagal mengajukan surat. Silakan coba lagi.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+        
+        // Handle specific error cases
+        if (errorMessage.includes('resident profile')) {
+          errorMessage = 'Anda harus melengkapi profil warga terlebih dahulu sebelum dapat mengajukan surat. Silakan hubungi RT setempat untuk verifikasi data.';
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

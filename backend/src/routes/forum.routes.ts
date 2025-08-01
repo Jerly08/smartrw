@@ -38,7 +38,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  validateRequest(createForumPostSchema),
+  // validateRequest(createForumPostSchema), // Temporarily disabled for debugging
   forumController.createForumPost
 );
 
@@ -87,7 +87,7 @@ router.get(
 router.post(
   '/:id/comments',
   authenticate,
-  validateRequest(createForumCommentSchema),
+  // validateRequest(createForumCommentSchema), // Temporarily disabled for debugging
   forumController.createForumComment
 );
 

@@ -42,7 +42,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadResidentDocument = exports.verifyByRT = exports.getPendingVerification = exports.getResidentSocialAssistance = exports.getResidentDocuments = exports.getResidentStatistics = exports.exportResidents = exports.importResidents = exports.verifyResident = exports.deleteResident = exports.updateResident = exports.createResident = exports.getResidentById = exports.getAllResidents = void 0;
+exports.getResidentsForRT = exports.uploadResidentDocument = exports.verifyByRT = exports.getPendingVerification = exports.getResidentSocialAssistance = exports.getResidentDocuments = exports.getResidentStatistics = exports.exportResidents = exports.importResidents = exports.verifyResident = exports.deleteResident = exports.updateResident = exports.createResident = exports.getResidentById = exports.getAllResidents = void 0;
 const residentService = __importStar(require("../services/resident.service"));
 const error_middleware_1 = require("../middleware/error.middleware");
 const client_1 = require("@prisma/client");
@@ -532,3 +532,37 @@ const uploadResidentDocument = (req, res, next) => __awaiter(void 0, void 0, voi
     }
 });
 exports.uploadResidentDocument = uploadResidentDocument;
+// Get residents for specific RT - used in RT dashboard
+const getResidentsForRT = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        const { page = '1', limit = '10', search } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        if (isNaN(pageNum) || isNaN(limitNum)) {
+            throw new error_middleware_1.ApiError('Invalid pagination parameters', 400);
+        }
+        const rtUserId = req.user.id;
+        const result = yield residentService.getResidentsForRT(rtUserId, {
+            page: pageNum,
+            limit: limitNum,
+            search: search,
+        });
+        res.status(200).json({
+            status: 'success',
+            results: result.residents.length,
+            totalPages: result.totalPages,
+            currentPage: pageNum,
+            totalItems: result.totalItems,
+            data: {
+                residents: result.residents,
+            },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getResidentsForRT = getResidentsForRT;

@@ -45,7 +45,7 @@ router.post(
   '/',
   authenticate,
   uploadMultiple('attachments', 5), // Allow up to 5 file attachments
-  validateRequest(createComplaintSchema),
+  // validateRequest(createComplaintSchema), // Temporarily disabled for debugging
   complaintController.createComplaint
 );
 

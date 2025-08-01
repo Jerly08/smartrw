@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadFields = exports.uploadMultiple = exports.uploadSingle = void 0;
+exports.uploadDocuments = exports.uploadFields = exports.uploadMultiple = exports.uploadSingle = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const error_middleware_1 = require("./error.middleware");
@@ -34,8 +34,10 @@ const getDestination = (req) => {
         return 'general'; // Default folder
     }
 };
-// Configure storage with dynamic destination and filename
-const storage = multer_1.default.diskStorage({
+// Use memory storage for documents to allow manual file processing in controllers
+const memoryStorage = multer_1.default.memoryStorage();
+// Configure disk storage for other types of uploads (like residents)
+const diskStorage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         const folder = getDestination(req);
         const destPath = path_1.default.join(__dirname, `../../uploads/${folder}`);
@@ -87,6 +89,15 @@ const storage = multer_1.default.diskStorage({
         }
     }),
 });
+// Choose storage based on destination
+const getStorageForDestination = (req) => {
+    const destination = getDestination(req);
+    // Use memory storage for documents to allow manual processing
+    if (destination === 'documents') {
+        return memoryStorage;
+    }
+    return diskStorage;
+};
 // File filter function to restrict file types
 const fileFilter = (req, file, callback) => {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -97,19 +108,39 @@ const fileFilter = (req, file, callback) => {
         callback(new error_middleware_1.ApiError('Invalid file type. Only JPG, PNG, GIF, PDF, and Word documents are allowed.', 400));
     }
 };
-// Create multer instance with configuration
-const upload = (0, multer_1.default)({
-    storage,
-    fileFilter,
-    limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB max file size
-    },
-});
+// Create multer instances with different configurations
+const createUpload = (storageType) => {
+    return (0, multer_1.default)({
+        storage: storageType === 'memory' ? memoryStorage : diskStorage,
+        fileFilter,
+        limits: {
+            fileSize: 20 * 1024 * 1024, // 20MB max file size
+        },
+    });
+};
+// Default upload instance (using disk storage)
+const upload = createUpload('disk');
+// Memory upload instance for documents
+const memoryUpload = createUpload('memory');
 // Export middleware for different use cases
 const uploadSingle = (fieldName) => upload.single(fieldName);
 exports.uploadSingle = uploadSingle;
-const uploadMultiple = (fieldName, maxCount = 5) => upload.array(fieldName, maxCount);
+const uploadMultiple = (fieldName, maxCount = 5) => {
+    // Use memory upload for documents and complaints to allow manual processing
+    const needsMemoryStorage = (req) => {
+        return req.originalUrl && (req.originalUrl.includes('/documents') || req.originalUrl.includes('/complaints'));
+    };
+    return (req, res, next) => {
+        if (needsMemoryStorage(req)) {
+            return memoryUpload.array(fieldName, maxCount)(req, res, next);
+        }
+        return upload.array(fieldName, maxCount)(req, res, next);
+    };
+};
 exports.uploadMultiple = uploadMultiple;
 const uploadFields = (fields) => upload.fields(fields);
 exports.uploadFields = uploadFields;
+// Export document-specific upload middleware
+const uploadDocuments = (fieldName, maxCount = 5) => memoryUpload.array(fieldName, maxCount);
+exports.uploadDocuments = uploadDocuments;
 exports.default = upload;

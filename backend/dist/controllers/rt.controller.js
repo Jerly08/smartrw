@@ -42,11 +42,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRTResidents = exports.getRTStatistics = exports.deleteRT = exports.updateRT = exports.createRT = exports.getRTByNumber = exports.getRTById = exports.getAllRTs = void 0;
+exports.getRTUpcomingEvents = exports.getRTPendingDocuments = exports.getRTPendingVerifications = exports.getRTDashboardStats = exports.getRTResidents = exports.getRTStatistics = exports.deleteRT = exports.updateRT = exports.createRT = exports.getRTByNumber = exports.getRTById = exports.getAllRTs = void 0;
 const rtService = __importStar(require("../services/rt.service"));
 const error_middleware_1 = require("../middleware/error.middleware");
 const rt_schema_1 = require("../schemas/rt.schema");
 const zod_1 = require("zod");
+const client_1 = require("@prisma/client");
+const prisma = new client_1.PrismaClient();
 // Get all RTs
 const getAllRTs = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -413,3 +415,377 @@ const getRTResidents = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.getRTResidents = getRTResidents;
+// Get RT dashboard statistics for logged-in RT user
+const getRTDashboardStats = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        if (req.user.role !== 'RT') {
+            throw new error_middleware_1.ApiError('Access denied. Only RT users can access this endpoint', 403);
+        }
+        // Get RT user's data to determine their RT information
+        const rtUserResident = yield prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: {
+                resident: true,
+                rt: true
+            }
+        });
+        if (!(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) && !(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt)) {
+            throw new error_middleware_1.ApiError('RT user profile not found', 404);
+        }
+        // Get RT information
+        let rtId = null;
+        let rtNumber = null;
+        if (rtUserResident.rt) {
+            rtId = rtUserResident.rt.id;
+            rtNumber = rtUserResident.rt.number;
+        }
+        else if (rtUserResident.resident) {
+            rtNumber = rtUserResident.resident.rtNumber;
+            // Find RT by number
+            const rt = yield prisma.rT.findUnique({
+                where: { number: rtNumber }
+            });
+            if (rt) {
+                rtId = rt.id;
+            }
+        }
+        if (!rtId || !rtNumber) {
+            throw new error_middleware_1.ApiError('RT information not found', 404);
+        }
+        // Get RT statistics using existing service
+        const statistics = yield rtService.getRTStatistics(rtId, {
+            id: req.user.id,
+            role: req.user.role
+        });
+        // Get pending documents count for this RT
+        const pendingDocuments = yield prisma.document.count({
+            where: {
+                status: 'DIAJUKAN',
+                requester: {
+                    resident: {
+                        rtNumber: rtNumber
+                    }
+                }
+            }
+        });
+        // Get recent activity (documents submitted in last 7 days)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentDocuments = yield prisma.document.count({
+            where: {
+                createdAt: {
+                    gte: sevenDaysAgo
+                },
+                requester: {
+                    resident: {
+                        rtNumber: rtNumber
+                    }
+                }
+            }
+        });
+        // Get active complaints count
+        const activeComplaints = yield prisma.complaint.count({
+            where: {
+                status: {
+                    in: ['DITERIMA', 'DITINDAKLANJUTI']
+                },
+                creator: {
+                    resident: {
+                        rtNumber: rtNumber
+                    }
+                }
+            }
+        });
+        // Prepare dashboard stats to match frontend expectations
+        const dashboardStats = {
+            rtNumber: rtNumber,
+            rwNumber: statistics.rt.number || '01',
+            residents: {
+                total: statistics.totalResidents,
+                verified: statistics.verifiedResidents,
+                unverified: statistics.unverifiedResidents,
+                families: statistics.totalFamilies
+            },
+            documents: {
+                pending: pendingDocuments,
+                total: recentDocuments
+            },
+            complaints: {
+                open: activeComplaints,
+                total: activeComplaints
+            },
+            events: {
+                upcoming: 0 // Will be replaced with actual count later
+            }
+        };
+        res.status(200).json({
+            status: 'success',
+            data: dashboardStats,
+        });
+    }
+    catch (error) {
+        console.error('Error fetching RT dashboard stats:', error);
+        next(error);
+    }
+});
+exports.getRTDashboardStats = getRTDashboardStats;
+// Fetch pending verifications
+const getRTPendingVerifications = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        if (req.user.role !== 'RT') {
+            throw new error_middleware_1.ApiError('Access denied. Only RT users can access this endpoint', 403);
+        }
+        // Get RT user's data to determine their RT information
+        const rtUserResident = yield prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: {
+                resident: true,
+                rt: true
+            }
+        });
+        if (!(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) && !(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt)) {
+            throw new error_middleware_1.ApiError('RT user profile not found', 404);
+        }
+        // Get RT information
+        let rtNumber = null;
+        if (rtUserResident.rt) {
+            rtNumber = rtUserResident.rt.number;
+        }
+        else if (rtUserResident.resident) {
+            rtNumber = rtUserResident.resident.rtNumber;
+        }
+        if (!rtNumber) {
+            throw new error_middleware_1.ApiError('RT information not found', 404);
+        }
+        // Get pending verifications (residents that are not yet verified)
+        const pendingVerifications = yield prisma.resident.findMany({
+            where: {
+                rtNumber: rtNumber,
+                isVerified: false
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        createdAt: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: limit
+        });
+        const formattedVerifications = pendingVerifications.map(resident => ({
+            id: resident.id,
+            residentId: resident.id,
+            name: resident.user.name,
+            nik: resident.nik,
+            address: resident.address,
+            rtNumber: resident.rtNumber,
+            rwNumber: resident.rwNumber,
+            submittedAt: resident.createdAt.toISOString(),
+            photoUrl: undefined
+        }));
+        res.status(200).json({
+            status: 'success',
+            data: {
+                verifications: formattedVerifications,
+                pagination: {
+                    page: 1,
+                    limit: limit,
+                    total: formattedVerifications.length,
+                    totalPages: 1
+                }
+            },
+        });
+    }
+    catch (error) {
+        console.error('Error fetching pending verifications:', error);
+        next(error);
+    }
+});
+exports.getRTPendingVerifications = getRTPendingVerifications;
+// Fetch pending documents
+const getRTPendingDocuments = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        if (req.user.role !== 'RT') {
+            throw new error_middleware_1.ApiError('Access denied. Only RT users can access this endpoint', 403);
+        }
+        // Get RT user's data to determine their RT information
+        const rtUserResident = yield prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: {
+                resident: true,
+                rt: true
+            }
+        });
+        if (!(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) && !(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt)) {
+            throw new error_middleware_1.ApiError('RT user profile not found', 404);
+        }
+        // Get RT information
+        let rtNumber = null;
+        if (rtUserResident.rt) {
+            rtNumber = rtUserResident.rt.number;
+        }
+        else if (rtUserResident.resident) {
+            rtNumber = rtUserResident.resident.rtNumber;
+        }
+        if (!rtNumber) {
+            throw new error_middleware_1.ApiError('RT information not found', 404);
+        }
+        // Get pending documents for this RT
+        const pendingDocuments = yield prisma.document.findMany({
+            where: {
+                status: 'DIAJUKAN',
+                requester: {
+                    resident: {
+                        rtNumber: rtNumber
+                    }
+                }
+            },
+            include: {
+                requester: {
+                    select: {
+                        name: true,
+                        resident: {
+                            select: {
+                                nik: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: limit
+        });
+        const formattedDocuments = pendingDocuments.map(doc => {
+            var _a;
+            return ({
+                id: doc.id,
+                documentId: doc.id,
+                type: doc.type,
+                requester: doc.requester.name,
+                requesterNik: ((_a = doc.requester.resident) === null || _a === void 0 ? void 0 : _a.nik) || '',
+                subject: doc.subject || doc.type,
+                submittedAt: doc.createdAt.toISOString()
+            });
+        });
+        res.status(200).json({
+            status: 'success',
+            data: {
+                documents: formattedDocuments,
+                pagination: {
+                    page: 1,
+                    limit: limit,
+                    total: formattedDocuments.length,
+                    totalPages: 1
+                }
+            },
+        });
+    }
+    catch (error) {
+        console.error('Error fetching pending documents:', error);
+        next(error);
+    }
+});
+exports.getRTPendingDocuments = getRTPendingDocuments;
+// Fetch upcoming events
+const getRTUpcomingEvents = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        if (req.user.role !== 'RT') {
+            throw new error_middleware_1.ApiError('Access denied. Only RT users can access this endpoint', 403);
+        }
+        // Get RT user's data to determine their RT information
+        const rtUserResident = yield prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: {
+                resident: true,
+                rt: true
+            }
+        });
+        if (!(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) && !(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt)) {
+            throw new error_middleware_1.ApiError('RT user profile not found', 404);
+        }
+        // Get RT information
+        let rtNumber = null;
+        if (rtUserResident.rt) {
+            rtNumber = rtUserResident.rt.number;
+        }
+        else if (rtUserResident.resident) {
+            rtNumber = rtUserResident.resident.rtNumber;
+        }
+        if (!rtNumber) {
+            throw new error_middleware_1.ApiError('RT information not found', 404);
+        }
+        // Get upcoming events (events that start after today)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcomingEvents = yield prisma.event.findMany({
+            where: {
+                startDate: {
+                    gte: today
+                },
+                OR: [
+                    {
+                        targetRTs: {
+                            contains: rtNumber
+                        }
+                    },
+                    {
+                        targetRTs: null // Global events
+                    }
+                ]
+            },
+            orderBy: {
+                startDate: 'asc'
+            },
+            take: limit
+        });
+        const formattedEvents = upcomingEvents.map(event => ({
+            id: event.id,
+            title: event.title,
+            description: event.description || '',
+            date: event.startDate.toISOString(),
+            location: event.location || '',
+            participants: 0,
+            isRTEvent: event.targetRTs !== null
+        }));
+        res.status(200).json({
+            status: 'success',
+            data: {
+                events: formattedEvents,
+                pagination: {
+                    page: 1,
+                    limit: limit,
+                    total: formattedEvents.length,
+                    totalPages: 1
+                }
+            },
+        });
+    }
+    catch (error) {
+        console.error('Error fetching upcoming events:', error);
+        next(error);
+    }
+});
+exports.getRTUpcomingEvents = getRTUpcomingEvents;

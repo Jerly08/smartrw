@@ -54,7 +54,19 @@ export default function CreateForumPostPage() {
       router.push('/dashboard/forum');
     } catch (err: any) {
       console.error('Error creating forum post:', err);
-      setError(err.response?.data?.message || 'Gagal membuat postingan. Silakan coba lagi.');
+      
+      let errorMessage = 'Gagal membuat postingan. Silakan coba lagi.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+        
+        // Handle specific error cases
+        if (errorMessage.includes('resident profile')) {
+          errorMessage = 'Anda harus melengkapi profil warga terlebih dahulu sebelum dapat membuat postingan forum. Silakan hubungi RT setempat untuk verifikasi data.';
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

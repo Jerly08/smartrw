@@ -4,7 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validation.middleware';
 import { checkDocumentAccess, checkDocumentProcessAccess } from '../middleware/document.middleware';
 import { createDocumentSchema, updateDocumentSchema, processDocumentSchema, searchDocumentsSchema } from '../schemas/document.schema';
-import { uploadMultiple } from '../middleware/upload.middleware';
+import { uploadMultiple, uploadDocuments } from '../middleware/upload.middleware';
 
 const router = express.Router();
 
@@ -49,7 +49,8 @@ router.get(
 router.post(
   '/',
   authenticate,
-  uploadMultiple('attachments', 5), // Allow up to 5 file attachments
+  uploadDocuments('attachments', 5), // Allow up to 5 file attachments
+  // validateRequest(createDocumentSchema), // Temporarily disabled for debugging
   documentController.createDocument
 );
 

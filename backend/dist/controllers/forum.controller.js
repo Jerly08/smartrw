@@ -125,6 +125,14 @@ const createForumPost = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         });
     }
     catch (error) {
+        console.error('Error creating forum post:', error);
+        // Handle specific ApiError
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                status: 'error',
+                message: error.message,
+            });
+        }
         next(error);
     }
 });

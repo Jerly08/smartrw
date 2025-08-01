@@ -48,7 +48,7 @@ export default function DocumentManagementPage() {
       }
       
       const response = await documentApi.getAllDocuments(params);
-      setDocuments(response.documents);
+      setDocuments(response.documents || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
@@ -88,7 +88,7 @@ export default function DocumentManagementPage() {
       } else if (status === DocumentStatus.SELESAI) {
         await documentApi.completeDocument(id);
       } else if (status === DocumentStatus.DIPROSES) {
-        await documentApi.updateDocumentStatus(id, { status });
+        await documentApi.processDocument(id, { status });
       }
       fetchDocuments();
       fetchStatistics();
@@ -280,14 +280,14 @@ export default function DocumentManagementPage() {
                     </div>
                   </td>
                 </tr>
-              ) : documents.length === 0 ? (
+              ) : (documents && documents.length === 0) ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                     Tidak ada data surat
                   </td>
                 </tr>
               ) : (
-                documents.map((document, index) => (
+                (documents || []).map((document, index) => (
                   <tr key={document.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {index + 1}

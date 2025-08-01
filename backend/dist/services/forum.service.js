@@ -134,6 +134,19 @@ const getPostById = (id) => __awaiter(void 0, void 0, void 0, function* () {
 exports.getPostById = getPostById;
 // Create new post
 const createPost = (data, authorId) => __awaiter(void 0, void 0, void 0, function* () {
+    // Check if user exists and has resident data for non-admin roles
+    const author = yield prisma.user.findUnique({
+        where: { id: authorId },
+        include: {
+            resident: true,
+        },
+    });
+    if (!author) {
+        throw new error_middleware_1.ApiError('User not found', 404);
+    }
+    if (author.role !== 'ADMIN' && !author.resident) {
+        throw new error_middleware_1.ApiError('User must have resident profile to create forum post', 400);
+    }
     // Create post
     const post = yield prisma.forumPost.create({
         data: Object.assign(Object.assign({}, data), { authorId }),

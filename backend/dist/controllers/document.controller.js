@@ -151,6 +151,14 @@ const createDocument = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         });
     }
     catch (error) {
+        console.error('Error creating document:', error);
+        // Handle specific ApiError
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                status: 'error',
+                message: error.message,
+            });
+        }
         next(error);
     }
 });
@@ -165,6 +173,11 @@ function processAttachments(files) {
         }
         const attachments = [];
         for (const file of files) {
+            // Check if file has buffer (memory storage)
+            if (!file.buffer) {
+                console.warn('File buffer is undefined, skipping file:', file.originalname);
+                continue;
+            }
             // Generate unique filename
             const fileName = `${(0, uuid_1.v4)()}-${file.originalname}`;
             const filePath = path_1.default.join(uploadDir, fileName);
@@ -288,7 +301,7 @@ const deleteDocument = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
 exports.deleteDocument = deleteDocument;
 // Get document statistics
 const getDocumentStatistics = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     try {
         if (!req.user) {
             throw new error_middleware_1.ApiError('User not authenticated', 401);
@@ -297,18 +310,27 @@ const getDocumentStatistics = (req, res, next) => __awaiter(void 0, void 0, void
         let whereCondition = {};
         // For RT, only show documents from their RT
         if (req.user.role === 'RT') {
-            // Get RT user's resident data to determine their RT number
+            // Get RT user's data to determine their RT number
             const rtUserResident = yield prisma.user.findUnique({
                 where: { id: req.user.id },
                 include: {
-                    resident: true
+                    resident: true,
+                    rt: true
                 }
             });
+            // Get RT number from either resident profile or RT table
+            let rtNumber = null;
             if ((_a = rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) === null || _a === void 0 ? void 0 : _a.rtNumber) {
+                rtNumber = rtUserResident.resident.rtNumber;
+            }
+            else if ((_b = rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt) === null || _b === void 0 ? void 0 : _b.number) {
+                rtNumber = rtUserResident.rt.number;
+            }
+            if (rtNumber) {
                 whereCondition = {
                     requester: {
                         resident: {
-                            rtNumber: rtUserResident.resident.rtNumber
+                            rtNumber: rtNumber
                         }
                     }
                 };

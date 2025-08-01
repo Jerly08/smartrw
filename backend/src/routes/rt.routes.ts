@@ -8,10 +8,16 @@ const router = express.Router();
 
 // Protected routes - require authentication
 router.get('/', authenticate, rtController.getAllRTs);
+router.get('/dashboard/stats', authenticate, authorize(['RT']), rtController.getRTDashboardStats);
 router.get('/:id', authenticate, rtController.getRTById);
 router.get('/number/:number', authenticate, rtController.getRTByNumber);
 router.get('/:id/statistics', authenticate, rtController.getRTStatistics);
 router.get('/:id/residents', authenticate, rtController.getRTResidents);
+
+// New routes for dashboard
+router.get('/verifications/pending', authenticate, authorize(['RT']), rtController.getRTPendingVerifications);
+router.get('/documents/pending', authenticate, authorize(['RT']), rtController.getRTPendingDocuments);
+router.get('/events/upcoming', authenticate, authorize(['RT']), rtController.getRTUpcomingEvents);
 
 // Routes for RW and Admin only
 router.post(

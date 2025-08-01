@@ -41,12 +41,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={inputClasses}
             {...props}
             type={isPasswordField ? (showPassword ? 'text' : 'password') : props.type}
+            suppressHydrationWarning={true}
           />
           {isPasswordField && (
             <button
               type="button"
               onClick={togglePasswordVisibility}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+              suppressHydrationWarning={true}
             >
               {showPassword ? 
                 <EyeOff className="h-4 w-4" /> : 

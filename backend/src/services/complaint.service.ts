@@ -65,57 +65,130 @@ export const getAllComplaints = async (params: ComplaintQueryParams, currentUser
   // Apply role-based filtering
   if (currentUser.role === 'RT') {
     // RT can only see complaints from their RT
-    const rtResident = await prisma.resident.findFirst({
-      where: { userId: currentUser.id },
+    const rtUser = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: {
+        resident: true,
+        rt: true
+      }
     });
     
-    if (!rtResident) {
-      throw new ApiError('RT profile not found', 404);
+    if (!rtUser) {
+      throw new ApiError('RT user not found', 404);
     }
     
-    // Get all users from the RT's area
-    const rtUsers = await prisma.resident.findMany({
+    let rtNumber: string | null = null;
+    let rwNumber: string | null = null;
+    
+    // Get RT information from either RT profile or resident profile
+    if (rtUser.rt) {
+      rtNumber = rtUser.rt.number;
+      // Get RW number from RT's area (assuming RT knows its RW)
+      const rtInfo = await prisma.rT.findUnique({
+        where: { id: rtUser.rt.id },
+        select: { number: true }
+      });
+      if (rtInfo) {
+        rtNumber = rtInfo.number;
+        // Extract RW number from RT number (assuming format like "001" where RW is first digit)
+        rwNumber = '01'; // You might need to adjust this based on your data structure
+      }
+    } else if (rtUser.resident) {
+      rtNumber = rtUser.resident.rtNumber;
+      rwNumber = rtUser.resident.rwNumber;
+    }
+    
+    if (!rtNumber) {
+      throw new ApiError('RT information not found', 404);
+    }
+    
+    // Get all users (warga) from the RT's area
+    const rtResidents = await prisma.resident.findMany({
       where: { 
-        rtNumber: rtResident.rtNumber,
-        rwNumber: rtResident.rwNumber
+        rtNumber: rtNumber,
+        ...(rwNumber && { rwNumber: rwNumber })
       },
       select: { userId: true },
     });
     
-    const rtUserIds = rtUsers.map(user => user.userId);
+    const rtUserIds = rtResidents.map(resident => resident.userId);
     
-    // Filter complaints by RT's users
-    whereConditions.OR = [
-      { createdBy: { in: rtUserIds } },
-    ];
+    // Filter complaints by RT's residents only
+    whereConditions.createdBy = { in: rtUserIds };
     
-    // If rtNumber is specified, it must match the RT's rtNumber
-    if (rtNumber && rtNumber !== rtResident.rtNumber) {
+    // If rtNumber is specified in query, it must match the RT's rtNumber
+    if (params.rtNumber && params.rtNumber !== rtNumber) {
       throw new ApiError('RT can only access complaints for their own RT', 403);
     }
     
-    // If rwNumber is specified, it must match the RT's rwNumber
-    if (rwNumber && rwNumber !== rtResident.rwNumber) {
+    // If rwNumber is specified in query, it must match the RT's rwNumber
+    if (params.rwNumber && rwNumber && params.rwNumber !== rwNumber) {
       throw new ApiError('RT can only access complaints for their own RW', 403);
+    }
+  } else if (currentUser.role === 'RW') {
+    // RW can see complaints from all RTs under their RW
+    const rwUser = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: {
+        resident: true
+      }
+    });
+    
+    if (!rwUser?.resident) {
+      throw new ApiError('RW user profile not found', 404);
+    }
+    
+    const rwNumber = rwUser.resident.rwNumber;
+    
+    // Get all residents from the RW's area (all RTs under this RW)
+    const rwResidents = await prisma.resident.findMany({
+      where: { 
+        rwNumber: rwNumber
+      },
+      select: { userId: true },
+    });
+    
+    const rwUserIds = rwResidents.map(resident => resident.userId);
+    
+    // Filter complaints by RW's residents (from all RTs under this RW)
+    whereConditions.createdBy = { in: rwUserIds };
+    
+    // Apply additional filters if provided
+    if (params.rtNumber) {
+      // RW can filter by specific RT under their RW
+      const rtResidents = await prisma.resident.findMany({
+        where: { 
+          rtNumber: params.rtNumber,
+          rwNumber: rwNumber // Ensure RT is under this RW
+        },
+        select: { userId: true },
+      });
+      
+      if (rtResidents.length === 0) {
+        throw new ApiError('RT not found under your RW', 403);
+      }
+      
+      const rtUserIds = rtResidents.map(resident => resident.userId);
+      whereConditions.createdBy = { in: rtUserIds };
     }
   } else if (currentUser.role === 'WARGA') {
     // Warga can only see their own complaints
     whereConditions.createdBy = currentUser.id;
     
     // Ignore rtNumber and rwNumber filters for Warga
-  } else {
-    // Admin and RW can see all complaints
+  } else if (currentUser.role === 'ADMIN') {
+    // Admin can see all complaints
     // Apply optional filters if provided
-    if (rtNumber || rwNumber) {
+    if (params.rtNumber || params.rwNumber) {
       // Get all users from the specified RT/RW
       const residentsQuery: any = {};
       
-      if (rtNumber) {
-        residentsQuery.rtNumber = rtNumber;
+      if (params.rtNumber) {
+        residentsQuery.rtNumber = params.rtNumber;
       }
       
-      if (rwNumber) {
-        residentsQuery.rwNumber = rwNumber;
+      if (params.rwNumber) {
+        residentsQuery.rwNumber = params.rwNumber;
       }
       
       const residents = await prisma.resident.findMany({
@@ -210,6 +283,24 @@ export const getComplaintById = async (id: number, currentUser: CurrentUser) => 
 
 // Create complaint
 export const createComplaint = async (data: Partial<Complaint>, currentUser: CurrentUser) => {
+  // Check if user has resident data for non-admin roles
+  if (currentUser.role !== 'ADMIN') {
+    const requester = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: {
+        resident: true,
+      },
+    });
+    
+    if (!requester) {
+      throw new ApiError('User not found', 404);
+    }
+    
+    if (!requester.resident) {
+      throw new ApiError('User must have resident profile to create complaint', 400);
+    }
+  }
+  
   // Set the creator ID to the current user
   const complaintData = {
     ...data,
@@ -233,7 +324,12 @@ export const createComplaint = async (data: Partial<Complaint>, currentUser: Cur
   });
   
   // Create notification for RT and RW
-  await createComplaintNotifications(complaint);
+  try {
+    await createComplaintNotifications(complaint);
+  } catch (error) {
+    console.error('Error creating complaint notifications:', error);
+    // Don't fail the complaint creation if notification fails
+  }
   
   return complaint;
 };
@@ -366,19 +462,39 @@ export const getComplaintStatistics = async (currentUser: CurrentUser) => {
   // Apply role-based filtering
   if (currentUser.role === 'RT') {
     // RT can only see statistics for their RT
-    const rtResident = await prisma.resident.findFirst({
-      where: { userId: currentUser.id },
+    const rtUser = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: {
+        resident: true,
+        rt: true
+      }
     });
     
-    if (!rtResident) {
-      throw new ApiError('RT profile not found', 404);
+    if (!rtUser) {
+      throw new ApiError('RT user not found', 404);
+    }
+    
+    let rtNumber: string | null = null;
+    let rwNumber: string | null = null;
+    
+    // Get RT information from either RT profile or resident profile
+    if (rtUser.rt) {
+      rtNumber = rtUser.rt.number;
+      rwNumber = '01'; // You might need to adjust this based on your data structure
+    } else if (rtUser.resident) {
+      rtNumber = rtUser.resident.rtNumber;
+      rwNumber = rtUser.resident.rwNumber;
+    }
+    
+    if (!rtNumber) {
+      throw new ApiError('RT information not found', 404);
     }
     
     // Get all users from the RT's area
     const rtUsers = await prisma.resident.findMany({
       where: { 
-        rtNumber: rtResident.rtNumber,
-        rwNumber: rtResident.rwNumber
+        rtNumber: rtNumber,
+        ...(rwNumber && { rwNumber: rwNumber })
       },
       select: { userId: true },
     });
@@ -387,11 +503,38 @@ export const getComplaintStatistics = async (currentUser: CurrentUser) => {
     
     // Filter complaints by RT's users
     whereConditions.createdBy = { in: rtUserIds };
+  } else if (currentUser.role === 'RW') {
+    // RW can see statistics from all RTs under their RW
+    const rwUser = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: {
+        resident: true
+      }
+    });
+    
+    if (!rwUser?.resident) {
+      throw new ApiError('RW user profile not found', 404);
+    }
+    
+    const rwNumber = rwUser.resident.rwNumber;
+    
+    // Get all residents from the RW's area (all RTs under this RW)
+    const rwResidents = await prisma.resident.findMany({
+      where: { 
+        rwNumber: rwNumber
+      },
+      select: { userId: true },
+    });
+    
+    const rwUserIds = rwResidents.map(resident => resident.userId);
+    
+    // Filter complaints by RW's residents (from all RTs under this RW)
+    whereConditions.createdBy = { in: rwUserIds };
   } else if (currentUser.role === 'WARGA') {
     // Warga can only see statistics for their own complaints
     whereConditions.createdBy = currentUser.id;
   }
-  // Admin and RW can see all statistics
+  // Admin can see all statistics
   
   // Get total complaints
   const totalComplaints = await prisma.complaint.count({

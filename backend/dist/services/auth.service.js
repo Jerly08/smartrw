@@ -25,7 +25,7 @@ const registerUser = (userData) => __awaiter(void 0, void 0, void 0, function* (
         where: { email: userData.email },
     });
     if (existingUser) {
-        throw new error_middleware_1.ApiError('Email already in use', 400);
+        throw new error_middleware_1.ApiError('Maaf, email tersebut telah terdaftar', 400);
     }
     // Hash password
     const salt = yield bcryptjs_1.default.genSalt(10);
@@ -56,12 +56,12 @@ const loginUser = (email, password) => __awaiter(void 0, void 0, void 0, functio
         where: { email },
     });
     if (!user) {
-        throw new error_middleware_1.ApiError('Invalid email or password', 401);
+        throw new error_middleware_1.ApiError('Email atau password salah', 401);
     }
     // Check password
     const isPasswordValid = yield bcryptjs_1.default.compare(password, user.password);
     if (!isPasswordValid) {
-        throw new error_middleware_1.ApiError('Invalid email or password', 401);
+        throw new error_middleware_1.ApiError('Email atau password salah', 401);
     }
     // Generate JWT token
     const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
@@ -104,7 +104,7 @@ const updateUserProfile = (userId, data) => __awaiter(void 0, void 0, void 0, fu
             where: { email: data.email },
         });
         if (existingUser && existingUser.id !== userId) {
-            throw new error_middleware_1.ApiError('Email already in use', 400);
+            throw new error_middleware_1.ApiError('Maaf, email tersebut telah terdaftar', 400);
         }
     }
     // Update user data

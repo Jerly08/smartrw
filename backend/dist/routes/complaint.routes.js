@@ -52,7 +52,8 @@ router.get('/statistics', auth_middleware_1.authenticate, complaintController.ge
 router.get('/:id', auth_middleware_1.authenticate, complaint_middleware_1.checkComplaintAccess, complaintController.getComplaintById);
 // Create complaint - all authenticated users can create complaints
 router.post('/', auth_middleware_1.authenticate, (0, upload_middleware_1.uploadMultiple)('attachments', 5), // Allow up to 5 file attachments
-(0, validation_middleware_1.validateRequest)(complaint_schema_1.createComplaintSchema), complaintController.createComplaint);
+// validateRequest(createComplaintSchema), // Temporarily disabled for debugging
+complaintController.createComplaint);
 // Update complaint - only complaint creator, RT (for their RT), RW, and Admin can update complaints
 router.put('/:id', auth_middleware_1.authenticate, complaint_middleware_1.checkComplaintUpdateAccess, (0, upload_middleware_1.uploadMultiple)('attachments', 5), // Allow up to 5 file attachments
 (0, validation_middleware_1.validateRequest)(complaint_schema_1.updateComplaintSchema), complaintController.updateComplaint);

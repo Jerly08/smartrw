@@ -171,6 +171,21 @@ const getComplaintById = (id, currentUser) => __awaiter(void 0, void 0, void 0, 
 exports.getComplaintById = getComplaintById;
 // Create complaint
 const createComplaint = (data, currentUser) => __awaiter(void 0, void 0, void 0, function* () {
+    // Check if user has resident data for non-admin roles
+    if (currentUser.role !== 'ADMIN') {
+        const requester = yield prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: {
+                resident: true,
+            },
+        });
+        if (!requester) {
+            throw new error_middleware_1.ApiError('User not found', 404);
+        }
+        if (!requester.resident) {
+            throw new error_middleware_1.ApiError('User must have resident profile to create complaint', 400);
+        }
+    }
     // Set the creator ID to the current user
     const complaintData = Object.assign(Object.assign({}, data), { createdBy: currentUser.id, status: 'DITERIMA' });
     // Create complaint
@@ -188,7 +203,13 @@ const createComplaint = (data, currentUser) => __awaiter(void 0, void 0, void 0,
         },
     });
     // Create notification for RT and RW
-    yield createComplaintNotifications(complaint);
+    try {
+        yield createComplaintNotifications(complaint);
+    }
+    catch (error) {
+        console.error('Error creating complaint notifications:', error);
+        // Don't fail the complaint creation if notification fails
+    }
     return complaint;
 });
 exports.createComplaint = createComplaint;

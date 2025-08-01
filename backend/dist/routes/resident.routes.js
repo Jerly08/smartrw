@@ -48,6 +48,8 @@ router.get('/', auth_middleware_1.authenticate, residentController.getAllResiden
 router.get('/statistics', auth_middleware_1.authenticate, residentController.getResidentStatistics);
 // Get residents pending verification for RT - MUST be before /:id route
 router.get('/pending-verification', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), residentController.getPendingVerification);
+// Get residents for specific RT - used in RT dashboard
+router.get('/rt-residents', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), residentController.getResidentsForRT);
 router.get('/:id', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentById);
 // Get resident documents
 router.get('/:id/documents', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentDocuments);

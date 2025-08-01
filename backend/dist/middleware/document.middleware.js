@@ -35,23 +35,38 @@ const checkDocumentAccess = (req, res, next) => __awaiter(void 0, void 0, void 0
         }
         if (req.user.role === 'RT') {
             // RT can only access documents from residents in their RT
-            const rtResident = yield prisma.resident.findFirst({
-                where: { userId: req.user.id },
+            // Get RT user's resident profile to find their RT number
+            const rtUserResident = yield prisma.user.findUnique({
+                where: { id: req.user.id },
+                include: {
+                    resident: true,
+                    rt: true
+                }
             });
-            if (!rtResident) {
-                return res.status(403).json({ message: 'RT profile not found' });
+            if (!(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) && !(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt)) {
+                return res.status(403).json({ message: 'RT user profile not found' });
+            }
+            // Get RT number from either resident profile or RT table
+            let rtNumber = null;
+            if (rtUserResident.resident) {
+                rtNumber = rtUserResident.resident.rtNumber;
+            }
+            else if (rtUserResident.rt) {
+                rtNumber = rtUserResident.rt.number;
+            }
+            if (!rtNumber) {
+                return res.status(403).json({ message: 'RT number not found in user profile' });
             }
             // Get requester's resident record
             const requesterResident = yield prisma.resident.findFirst({
                 where: { userId: document.requesterId },
             });
             if (!requesterResident) {
-                return res.status(403).json({ message: 'Requester profile not found' });
+                return res.status(403).json({ message: 'Document requester profile not found' });
             }
-            // Check if requester is in RT's area
-            if (requesterResident.rtNumber !== rtResident.rtNumber ||
-                requesterResident.rwNumber !== rtResident.rwNumber) {
-                return res.status(403).json({ message: 'You can only access documents from residents in your RT' });
+            // Check if requester is in RT's area by matching RT number
+            if (requesterResident.rtNumber !== rtNumber) {
+                return res.status(403).json({ message: 'You can only access documents from residents in your RT area' });
             }
         }
         else if (req.user.role === 'WARGA') {
@@ -132,23 +147,38 @@ const checkDocumentProcessAccess = (req, res, next) => __awaiter(void 0, void 0,
                 return res.status(403).json({ message: 'Document must be in DIAJUKAN status to be processed by RT' });
             }
             // Check if document is from a resident in RT's area
-            const rtResident = yield prisma.resident.findFirst({
-                where: { userId: req.user.id },
+            // Get RT user's resident profile to find their RT number
+            const rtUserResident = yield prisma.user.findUnique({
+                where: { id: req.user.id },
+                include: {
+                    resident: true,
+                    rt: true
+                }
             });
-            if (!rtResident) {
-                return res.status(403).json({ message: 'RT profile not found' });
+            if (!(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.resident) && !(rtUserResident === null || rtUserResident === void 0 ? void 0 : rtUserResident.rt)) {
+                return res.status(403).json({ message: 'RT user profile not found' });
+            }
+            // Get RT number from either resident profile or RT table
+            let rtNumber = null;
+            if (rtUserResident.resident) {
+                rtNumber = rtUserResident.resident.rtNumber;
+            }
+            else if (rtUserResident.rt) {
+                rtNumber = rtUserResident.rt.number;
+            }
+            if (!rtNumber) {
+                return res.status(403).json({ message: 'RT number not found in user profile' });
             }
             // Get requester's resident record
             const requesterResident = yield prisma.resident.findFirst({
                 where: { userId: document.requesterId },
             });
             if (!requesterResident) {
-                return res.status(403).json({ message: 'Requester profile not found' });
+                return res.status(403).json({ message: 'Document requester profile not found' });
             }
-            // Check if requester is in RT's area
-            if (requesterResident.rtNumber !== rtResident.rtNumber ||
-                requesterResident.rwNumber !== rtResident.rwNumber) {
-                return res.status(403).json({ message: 'You can only process documents from residents in your RT' });
+            // Check if requester is in RT's area by matching RT number
+            if (requesterResident.rtNumber !== rtNumber) {
+                return res.status(403).json({ message: 'You can only process documents from residents in your RT area' });
             }
         }
         else {

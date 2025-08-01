@@ -127,6 +127,22 @@ export const getPostById = async (id: number) => {
 
 // Create new post
 export const createPost = async (data: ForumPostInput, authorId: number) => {
+  // Check if user exists and has resident data for non-admin roles
+  const author = await prisma.user.findUnique({
+    where: { id: authorId },
+    include: {
+      resident: true,
+    },
+  });
+  
+  if (!author) {
+    throw new ApiError('User not found', 404);
+  }
+  
+  if (author.role !== 'ADMIN' && !author.resident) {
+    throw new ApiError('User must have resident profile to create forum post', 400);
+  }
+  
   // Create post
   const post = await prisma.forumPost.create({
     data: {

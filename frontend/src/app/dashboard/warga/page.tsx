@@ -324,13 +324,8 @@ const RTManagement = ({ onClose }: { onClose: () => void }) => {
       setRtList(result.rts || []);
     } catch (error) {
       console.error('Error fetching RT list:', error);
-      // Use fallback data if API fails
-      const fallbackRtList = [
-        { id: 1, number: '001' },
-        { id: 2, number: '002' },
-        { id: 3, number: '003' }
-      ];
-      setRtList(fallbackRtList);
+      // Only use real data from database, no fallback dummy data
+      setRtList([]);
     } finally {
       setIsLoadingList(false);
     }
@@ -1161,13 +1156,8 @@ export default function WargaManagementPage() {
       setRtList(result.rts || []);
     } catch (error) {
       console.error('Error fetching RT list:', error);
-      // Use fallback data if API fails
-      const rtList = [
-        { id: 1, number: '001' },
-        { id: 2, number: '002' },
-        { id: 3, number: '003' }
-      ];
-      setRtList(rtList);
+      // Only use real data from database, no fallback dummy data
+      setRtList([]);
     }
   };
 

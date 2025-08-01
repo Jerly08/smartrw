@@ -33,12 +33,29 @@ export const checkDocumentAccess = async (req: Request, res: Response, next: Nex
 
     if (req.user.role === 'RT') {
       // RT can only access documents from residents in their RT
-      const rtResident = await prisma.resident.findFirst({
-        where: { userId: req.user.id },
+      // Get RT user's resident profile to find their RT number
+      const rtUserResident = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { 
+          resident: true,
+          rt: true 
+        }
       });
 
-      if (!rtResident) {
-        return res.status(403).json({ message: 'RT profile not found' });
+      if (!rtUserResident?.resident && !rtUserResident?.rt) {
+        return res.status(403).json({ message: 'RT user profile not found' });
+      }
+
+      // Get RT number from either resident profile or RT table
+      let rtNumber: string | null = null;
+      if (rtUserResident.resident) {
+        rtNumber = rtUserResident.resident.rtNumber;
+      } else if (rtUserResident.rt) {
+        rtNumber = rtUserResident.rt.number;
+      }
+
+      if (!rtNumber) {
+        return res.status(403).json({ message: 'RT number not found in user profile' });
       }
 
       // Get requester's resident record
@@ -47,13 +64,12 @@ export const checkDocumentAccess = async (req: Request, res: Response, next: Nex
       });
 
       if (!requesterResident) {
-        return res.status(403).json({ message: 'Requester profile not found' });
+        return res.status(403).json({ message: 'Document requester profile not found' });
       }
 
-      // Check if requester is in RT's area
-      if (requesterResident.rtNumber !== rtResident.rtNumber || 
-          requesterResident.rwNumber !== rtResident.rwNumber) {
-        return res.status(403).json({ message: 'You can only access documents from residents in your RT' });
+      // Check if requester is in RT's area by matching RT number
+      if (requesterResident.rtNumber !== rtNumber) {
+        return res.status(403).json({ message: 'You can only access documents from residents in your RT area' });
       }
     } else if (req.user.role === 'WARGA') {
       // Warga can only access their own documents
@@ -141,12 +157,29 @@ export const checkDocumentProcessAccess = async (req: Request, res: Response, ne
       }
       
       // Check if document is from a resident in RT's area
-      const rtResident = await prisma.resident.findFirst({
-        where: { userId: req.user.id },
+      // Get RT user's resident profile to find their RT number
+      const rtUserResident = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: { 
+          resident: true,
+          rt: true 
+        }
       });
-      
-      if (!rtResident) {
-        return res.status(403).json({ message: 'RT profile not found' });
+
+      if (!rtUserResident?.resident && !rtUserResident?.rt) {
+        return res.status(403).json({ message: 'RT user profile not found' });
+      }
+
+      // Get RT number from either resident profile or RT table
+      let rtNumber: string | null = null;
+      if (rtUserResident.resident) {
+        rtNumber = rtUserResident.resident.rtNumber;
+      } else if (rtUserResident.rt) {
+        rtNumber = rtUserResident.rt.number;
+      }
+
+      if (!rtNumber) {
+        return res.status(403).json({ message: 'RT number not found in user profile' });
       }
       
       // Get requester's resident record
@@ -155,13 +188,12 @@ export const checkDocumentProcessAccess = async (req: Request, res: Response, ne
       });
       
       if (!requesterResident) {
-        return res.status(403).json({ message: 'Requester profile not found' });
+        return res.status(403).json({ message: 'Document requester profile not found' });
       }
       
-      // Check if requester is in RT's area
-      if (requesterResident.rtNumber !== rtResident.rtNumber || 
-          requesterResident.rwNumber !== rtResident.rwNumber) {
-        return res.status(403).json({ message: 'You can only process documents from residents in your RT' });
+      // Check if requester is in RT's area by matching RT number
+      if (requesterResident.rtNumber !== rtNumber) {
+        return res.status(403).json({ message: 'You can only process documents from residents in your RT area' });
       }
     } else {
       // Warga cannot process documents

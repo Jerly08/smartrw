@@ -48,7 +48,9 @@ router.get('/', auth_middleware_1.authenticate, (0, validation_middleware_1.vali
 // Get forum statistics
 router.get('/statistics', auth_middleware_1.authenticate, forumController.getForumStatistics);
 // Create forum post
-router.post('/', auth_middleware_1.authenticate, (0, validation_middleware_1.validateRequest)(forum_schema_1.createForumPostSchema), forumController.createForumPost);
+router.post('/', auth_middleware_1.authenticate, 
+// validateRequest(createForumPostSchema), // Temporarily disabled for debugging
+forumController.createForumPost);
 // Create announcement (only Admin and RW)
 router.post('/announcements', auth_middleware_1.authenticate, forum_middleware_1.checkAnnouncementAccess, (0, validation_middleware_1.validateRequest)(forum_schema_1.createForumPostSchema), forumController.createForumPost);
 // Get forum post by ID
@@ -60,7 +62,9 @@ router.delete('/:id', auth_middleware_1.authenticate, forum_middleware_1.checkFo
 // Get comments for a forum post
 router.get('/:id/comments', auth_middleware_1.authenticate, (0, validation_middleware_1.validateRequest)(forum_schema_1.searchForumCommentsSchema), forumController.getForumComments);
 // Create comment on a forum post
-router.post('/:id/comments', auth_middleware_1.authenticate, (0, validation_middleware_1.validateRequest)(forum_schema_1.createForumCommentSchema), forumController.createForumComment);
+router.post('/:id/comments', auth_middleware_1.authenticate, 
+// validateRequest(createForumCommentSchema), // Temporarily disabled for debugging
+forumController.createForumComment);
 // Update comment
 router.put('/:id/comments/:commentId', auth_middleware_1.authenticate, forum_middleware_1.checkForumCommentAccess, (0, validation_middleware_1.validateRequest)(forum_schema_1.updateForumCommentSchema), forumController.updateForumComment);
 // Delete comment

@@ -160,6 +160,14 @@ const createComplaint = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         });
     }
     catch (error) {
+        console.error('Error creating complaint:', error);
+        // Handle specific ApiError
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                status: 'error',
+                message: error.message,
+            });
+        }
         next(error);
     }
 });
@@ -174,6 +182,11 @@ function processAttachments(files) {
         }
         const attachments = [];
         for (const file of files) {
+            // Check if file has buffer (memory storage)
+            if (!file.buffer) {
+                console.warn('File buffer is undefined, skipping file:', file.originalname);
+                continue;
+            }
             // Generate unique filename
             const fileName = `${(0, uuid_1.v4)()}-${file.originalname}`;
             const filePath = path_1.default.join(uploadDir, fileName);

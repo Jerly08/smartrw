@@ -140,7 +140,17 @@ export const createComplaint = async (req: Request, res: Response, next: NextFun
         complaint: newComplaint,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error creating complaint:', error);
+    
+    // Handle specific ApiError
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        status: 'error',
+        message: error.message,
+      });
+    }
+    
     next(error);
   }
 };
@@ -157,6 +167,12 @@ async function processAttachments(files: any[]): Promise<string[]> {
   const attachments: string[] = [];
   
   for (const file of files) {
+    // Check if file has buffer (memory storage)
+    if (!file.buffer) {
+      console.warn('File buffer is undefined, skipping file:', file.originalname);
+      continue;
+    }
+    
     // Generate unique filename
     const fileName = `${uuidv4()}-${file.originalname}`;
     const filePath = path.join(uploadDir, fileName);

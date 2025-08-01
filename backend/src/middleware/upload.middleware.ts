@@ -18,8 +18,11 @@ const getDestination = (req: Request) => {
   }
 };
 
-// Configure storage with dynamic destination and filename
-const storage = multer.diskStorage({
+// Use memory storage for documents to allow manual file processing in controllers
+const memoryStorage = multer.memoryStorage();
+
+// Configure disk storage for other types of uploads (like residents)
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const folder = getDestination(req);
     const destPath = path.join(__dirname, `../../uploads/${folder}`);
@@ -77,6 +80,16 @@ const storage = multer.diskStorage({
   },
 });
 
+// Choose storage based on destination
+const getStorageForDestination = (req: Request) => {
+  const destination = getDestination(req);
+  // Use memory storage for documents to allow manual processing
+  if (destination === 'documents') {
+    return memoryStorage;
+  }
+  return diskStorage;
+};
+
 // File filter function to restrict file types
 const fileFilter = (req: Request, file: Express.Multer.File, callback: multer.FileFilterCallback) => {
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -88,18 +101,40 @@ const fileFilter = (req: Request, file: Express.Multer.File, callback: multer.Fi
   }
 };
 
-// Create multer instance with configuration
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: {
-    fileSize: 20 * 1024 * 1024, // 20MB max file size
-  },
-});
+// Create multer instances with different configurations
+const createUpload = (storageType: 'memory' | 'disk') => {
+  return multer({
+    storage: storageType === 'memory' ? memoryStorage : diskStorage,
+    fileFilter,
+    limits: {
+      fileSize: 20 * 1024 * 1024, // 20MB max file size
+    },
+  });
+};
+
+// Default upload instance (using disk storage)
+const upload = createUpload('disk');
+
+// Memory upload instance for documents
+const memoryUpload = createUpload('memory');
 
 // Export middleware for different use cases
 export const uploadSingle = (fieldName: string) => upload.single(fieldName);
-export const uploadMultiple = (fieldName: string, maxCount: number = 5) => upload.array(fieldName, maxCount);
+export const uploadMultiple = (fieldName: string, maxCount: number = 5) => {
+  // Use memory upload for documents and complaints to allow manual processing
+  const needsMemoryStorage = (req: any) => {
+    return req.originalUrl && (req.originalUrl.includes('/documents') || req.originalUrl.includes('/complaints'));
+  };
+  return (req: any, res: any, next: any) => {
+    if (needsMemoryStorage(req)) {
+      return memoryUpload.array(fieldName, maxCount)(req, res, next);
+    }
+    return upload.array(fieldName, maxCount)(req, res, next);
+  };
+};
 export const uploadFields = (fields: { name: string, maxCount: number }[]) => upload.fields(fields);
+
+// Export document-specific upload middleware
+export const uploadDocuments = (fieldName: string, maxCount: number = 5) => memoryUpload.array(fieldName, maxCount);
 
 export default upload;

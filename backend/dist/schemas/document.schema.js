@@ -40,11 +40,9 @@ exports.updateDocumentSchema = zod_1.z.object({
 });
 // Process document schema (approve, reject, sign)
 exports.processDocumentSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        status: zod_1.z.enum(documentStatuses),
-        rejectionReason: zod_1.z.string().optional(),
-        notes: zod_1.z.string().optional(),
-    }),
+    status: zod_1.z.enum(documentStatuses),
+    rejectionReason: zod_1.z.string().optional(),
+    notes: zod_1.z.string().optional(),
 });
 // Search documents schema
 exports.searchDocumentsSchema = zod_1.z.object({

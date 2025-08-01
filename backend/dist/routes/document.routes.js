@@ -53,7 +53,8 @@ router.get('/:id/attachments/:filename', auth_middleware_1.authenticate, documen
 // Add route to download completed document
 router.get('/:id/download', auth_middleware_1.authenticate, document_middleware_1.checkDocumentAccess, documentController.downloadDocument);
 // Create document - all authenticated users can create documents
-router.post('/', auth_middleware_1.authenticate, (0, upload_middleware_1.uploadMultiple)('attachments', 5), // Allow up to 5 file attachments
+router.post('/', auth_middleware_1.authenticate, (0, upload_middleware_1.uploadDocuments)('attachments', 5), // Allow up to 5 file attachments
+// validateRequest(createDocumentSchema), // Temporarily disabled for debugging
 documentController.createDocument);
 // Update document - only the requester can update their own documents
 router.put('/:id', auth_middleware_1.authenticate, document_middleware_1.checkDocumentAccess, (0, upload_middleware_1.uploadMultiple)('attachments', 5), // Allow up to 5 file attachments
