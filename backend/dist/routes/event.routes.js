@@ -51,6 +51,8 @@ router.get('/statistics', auth_middleware_1.authenticate, eventController.getEve
 router.get('/:id', auth_middleware_1.authenticate, event_middleware_1.checkEventAccess, eventController.getEventById);
 // Get event participants
 router.get('/:id/participants', auth_middleware_1.authenticate, event_middleware_1.checkEventAccess, eventController.getEventParticipants);
+// Export event participants to CSV
+router.get('/:id/participants/export', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), event_middleware_1.checkEventManageAccess, eventController.exportEventParticipants);
 // Create event - only RT, RW, and Admin can create events
 router.post('/', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), (0, validation_middleware_1.validateRequest)(event_schema_1.createEventSchema), eventController.createEvent);
 // Update event - only event creator, RT (for their RT), RW, and Admin can update events
@@ -67,4 +69,6 @@ router.post('/:id/photos', auth_middleware_1.authenticate, (0, auth_middleware_1
 router.delete('/:id/photos/:photoId', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), event_middleware_1.checkEventManageAccess, eventController.deleteEventPhoto);
 // Publish event - only event creator, RT (for their RT), RW, and Admin can publish events
 router.post('/:id/publish', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), event_middleware_1.checkEventManageAccess, eventController.publishEvent);
+// Unpublish event - only event creator, RT (for their RT), RW, and Admin can unpublish events
+router.post('/:id/unpublish', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT', 'RW', 'ADMIN']), event_middleware_1.checkEventManageAccess, eventController.unpublishEvent);
 exports.default = router;

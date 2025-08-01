@@ -53,6 +53,8 @@ router.get('/rt-residents', auth_middleware_1.authenticate, (0, auth_middleware_
 router.get('/:id', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentById);
 // Get resident documents
 router.get('/:id/documents', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.getResidentDocuments);
+// Download resident document
+router.get('/:id/documents/download/:filename', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, residentController.downloadResidentDocument);
 // Upload document for resident
 router.post('/:id/documents/upload', auth_middleware_1.authenticate, auth_middleware_1.checkResidentAccess, (0, upload_middleware_1.uploadSingle)('document'), residentController.uploadResidentDocument);
 // Get social assistance history for a resident

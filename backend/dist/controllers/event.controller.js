@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEventStatistics = exports.publishEvent = exports.deleteEventPhoto = exports.addEventPhoto = exports.updateParticipantStatus = exports.getEventParticipants = exports.rsvpToEvent = exports.deleteEvent = exports.updateEvent = exports.createEvent = exports.getEventById = exports.getAllEvents = void 0;
+exports.exportEventParticipants = exports.getEventStatistics = exports.unpublishEvent = exports.publishEvent = exports.deleteEventPhoto = exports.addEventPhoto = exports.updateParticipantStatus = exports.getEventParticipants = exports.rsvpToEvent = exports.deleteEvent = exports.updateEvent = exports.createEvent = exports.getEventById = exports.getAllEvents = void 0;
 const eventService = __importStar(require("../services/event.service"));
 const error_middleware_1 = require("../middleware/error.middleware");
 const client_1 = require("@prisma/client");
@@ -590,6 +590,30 @@ const publishEvent = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.publishEvent = publishEvent;
+// Unpublish event
+const unpublishEvent = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const eventId = parseInt(req.params.id);
+        if (isNaN(eventId)) {
+            throw new error_middleware_1.ApiError('Invalid event ID', 400);
+        }
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        const event = yield eventService.unpublishEvent(eventId, req.user.id);
+        res.status(200).json({
+            status: 'success',
+            message: 'Event unpublished successfully',
+            data: {
+                event,
+            },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.unpublishEvent = unpublishEvent;
 // Get event statistics
 const getEventStatistics = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -641,3 +665,94 @@ const getEventStatistics = (req, res, next) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.getEventStatistics = getEventStatistics;
+// Export event participants to CSV
+const exportEventParticipants = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const eventId = parseInt(req.params.id);
+        if (isNaN(eventId)) {
+            throw new error_middleware_1.ApiError('Invalid event ID', 400);
+        }
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        // Get event details
+        const event = yield prisma.event.findUnique({
+            where: { id: eventId },
+            select: {
+                id: true,
+                title: true,
+                startDate: true,
+                location: true,
+            },
+        });
+        if (!event) {
+            throw new error_middleware_1.ApiError('Event not found', 404);
+        }
+        // Get participants with user details
+        const participants = yield prisma.eventParticipant.findMany({
+            where: {
+                eventId,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        resident: {
+                            select: {
+                                fullName: true,
+                                phoneNumber: true,
+                                address: true,
+                                rtNumber: true,
+                                rwNumber: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'asc',
+            },
+        });
+        // Create CSV content
+        const csvHeader = [
+            'No',
+            'Nama',
+            'Email',
+            'No. Telepon',
+            'Alamat',
+            'RT',
+            'RW',
+            'Status RSVP',
+            'Tanggal Daftar',
+        ].join(',');
+        const csvRows = participants.map((participant, index) => {
+            const user = participant.user;
+            const resident = user === null || user === void 0 ? void 0 : user.resident;
+            return [
+                index + 1,
+                `"${(user === null || user === void 0 ? void 0 : user.name) || (resident === null || resident === void 0 ? void 0 : resident.fullName) || 'N/A'}"`,
+                `"${(user === null || user === void 0 ? void 0 : user.email) || 'N/A'}"`,
+                `"${(resident === null || resident === void 0 ? void 0 : resident.phoneNumber) || 'N/A'}"`,
+                `"${(resident === null || resident === void 0 ? void 0 : resident.address) || 'N/A'}"`,
+                `"${(resident === null || resident === void 0 ? void 0 : resident.rtNumber) || 'N/A'}"`,
+                `"${(resident === null || resident === void 0 ? void 0 : resident.rwNumber) || 'N/A'}"`,
+                `"${participant.status}"`,
+                `"${participant.createdAt.toLocaleDateString('id-ID')}"`,
+            ].join(',');
+        });
+        const csvContent = [csvHeader, ...csvRows].join('\n');
+        // Set headers for file download
+        const fileName = `peserta-${event.title.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        // Add BOM for proper UTF-8 encoding in Excel
+        res.write('\uFEFF');
+        res.end(csvContent);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.exportEventParticipants = exportEventParticipants;

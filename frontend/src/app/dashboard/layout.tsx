@@ -69,7 +69,7 @@ export default function DashboardLayout({
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden md:ml-0">
-        <Header toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
+        <Header toggleSidebar={toggleSidebar} />
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}

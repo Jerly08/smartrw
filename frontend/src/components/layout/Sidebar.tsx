@@ -58,7 +58,7 @@ const NavItem = ({ href, icon, label, active, role, badge }: NavItemProps) => {
   );
 };
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
   const { unreadCount } = useNotifications({});

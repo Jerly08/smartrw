@@ -26,31 +26,23 @@ const socialAssistanceBaseSchema = {
     type: zod_1.z.enum(socialAssistanceTypes),
 };
 // Create social assistance schema
-exports.createSocialAssistanceSchema = zod_1.z.object({
-    body: zod_1.z.object(socialAssistanceBaseSchema),
-});
+exports.createSocialAssistanceSchema = zod_1.z.object(socialAssistanceBaseSchema);
 // Update social assistance schema
-exports.updateSocialAssistanceSchema = zod_1.z.object({
-    body: zod_1.z.object(Object.assign(Object.assign({}, Object.fromEntries(Object.entries(socialAssistanceBaseSchema).map(([key, schema]) => [key, schema.optional()]))), { status: zod_1.z.enum(socialAssistanceStatuses).optional() })).refine(data => Object.keys(data).length > 0, {
-        message: 'At least one field must be provided for update',
-    }),
+exports.updateSocialAssistanceSchema = zod_1.z.object(Object.assign(Object.assign({}, Object.fromEntries(Object.entries(socialAssistanceBaseSchema).map(([key, schema]) => [key, schema.optional()]))), { status: zod_1.z.enum(socialAssistanceStatuses).optional() })).refine(data => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for update',
 });
 // Add recipient schema
 exports.addRecipientSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        residentId: zod_1.z.number().int().positive('Resident ID must be a positive integer'),
-        notes: zod_1.z.string().optional(),
-    }),
+    residentId: zod_1.z.number().int().positive('Resident ID must be a positive integer'),
+    notes: zod_1.z.string().optional(),
 });
 // Update recipient schema
 exports.updateRecipientSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        notes: zod_1.z.string().optional(),
-        isVerified: zod_1.z.boolean().optional(),
-        receivedDate: zod_1.z.string().transform(val => new Date(val)).optional(),
-    }).refine(data => Object.keys(data).length > 0, {
-        message: 'At least one field must be provided for update',
-    }),
+    notes: zod_1.z.string().optional(),
+    isVerified: zod_1.z.boolean().optional(),
+    receivedDate: zod_1.z.string().transform(val => new Date(val)).optional(),
+}).refine(data => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for update',
 });
 // Search social assistance schema
 exports.searchSocialAssistanceSchema = zod_1.z.object({

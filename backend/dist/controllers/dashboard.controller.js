@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processDocumentRecommendation = exports.processVerification = exports.getRTUpcomingEvents = exports.getRTPendingDocuments = exports.getRTPendingVerifications = exports.getRTDashboardStats = void 0;
+exports.getRWUpcomingEvents = exports.getRWRecentDocuments = exports.getRWDashboardStats = exports.processDocumentRecommendation = exports.processVerification = exports.getRTUpcomingEvents = exports.getRTPendingDocuments = exports.getRTPendingVerifications = exports.getRTDashboardStats = void 0;
 const client_1 = require("@prisma/client");
 const error_middleware_1 = require("../middleware/error.middleware");
 const prisma = new client_1.PrismaClient();
@@ -557,3 +557,310 @@ const processDocumentRecommendation = (req, res, next) => __awaiter(void 0, void
     }
 });
 exports.processDocumentRecommendation = processDocumentRecommendation;
+// Get RW dashboard statistics
+const getRWDashboardStats = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        // Get RW user's resident record to find their RW number
+        const rwUser = yield prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: {
+                resident: true,
+            },
+        });
+        if (!rwUser || !rwUser.resident) {
+            throw new error_middleware_1.ApiError('RW profile not found', 404);
+        }
+        const rwNumber = rwUser.resident.rwNumber;
+        // Get resident statistics by RT for this RW
+        const rtStats = yield prisma.resident.groupBy({
+            by: ['rtNumber'],
+            where: {
+                rwNumber,
+            },
+            _count: {
+                id: true,
+            },
+        });
+        // Get verified residents count by RT
+        const verifiedStats = yield prisma.resident.groupBy({
+            by: ['rtNumber'],
+            where: {
+                rwNumber,
+                isVerified: true,
+            },
+            _count: {
+                id: true,
+            },
+        });
+        // Combine the stats
+        const byRT = rtStats.map(rt => {
+            var _a;
+            const verified = ((_a = verifiedStats.find(v => v.rtNumber === rt.rtNumber)) === null || _a === void 0 ? void 0 : _a._count.id) || 0;
+            return {
+                rtNumber: rt.rtNumber,
+                count: rt._count.id,
+                verified
+            };
+        });
+        const totalResidents = rtStats.reduce((sum, rt) => sum + rt._count.id, 0);
+        // Get document statistics
+        const pendingDocuments = yield prisma.document.count({
+            where: {
+                requester: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'DIPROSES', // Documents that are processed by RT but pending RW approval
+            },
+        });
+        const incomingDocuments = yield prisma.document.count({
+            where: {
+                requester: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'DIPROSES',
+            },
+        });
+        const outgoingDocuments = yield prisma.document.count({
+            where: {
+                requester: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'SELESAI',
+                createdAt: {
+                    gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // This month
+                },
+            },
+        });
+        // Get complaint statistics
+        const totalComplaints = yield prisma.complaint.count({
+            where: {
+                creator: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+            },
+        });
+        const openComplaints = yield prisma.complaint.count({
+            where: {
+                creator: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'DITERIMA',
+            },
+        });
+        const inProgressComplaints = yield prisma.complaint.count({
+            where: {
+                creator: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'DITINDAKLANJUTI',
+            },
+        });
+        const resolvedComplaints = yield prisma.complaint.count({
+            where: {
+                creator: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'SELESAI',
+            },
+        });
+        // Get event statistics
+        const upcomingEvents = yield prisma.event.count({
+            where: {
+                startDate: {
+                    gte: new Date(),
+                },
+                isPublished: true,
+                OR: [
+                    { targetRTs: null }, // Events for all RTs
+                    { targetRTs: { contains: rwNumber } }, // Events targeting this RW
+                ],
+            },
+        });
+        const totalEvents = yield prisma.event.count({
+            where: {
+                OR: [
+                    { targetRTs: null },
+                    { targetRTs: { contains: rwNumber } },
+                ],
+            },
+        });
+        // Get social assistance statistics
+        const activeSocialAssistance = yield prisma.socialAssistance.count({
+            where: {
+                status: 'DISALURKAN',
+            },
+        });
+        const totalRecipients = yield prisma.socialAssistanceRecipient.count({
+            where: {
+                resident: {
+                    rwNumber,
+                },
+            },
+        });
+        const stats = {
+            residents: {
+                total: totalResidents,
+                byRT,
+            },
+            documents: {
+                incoming: incomingDocuments,
+                outgoing: outgoingDocuments,
+                pending: pendingDocuments,
+            },
+            complaints: {
+                total: totalComplaints,
+                open: openComplaints,
+                inProgress: inProgressComplaints,
+                resolved: resolvedComplaints,
+            },
+            events: {
+                upcoming: upcomingEvents,
+                total: totalEvents,
+            },
+            assistance: {
+                active: activeSocialAssistance,
+                recipients: totalRecipients,
+            },
+        };
+        res.status(200).json({
+            status: 'success',
+            data: stats,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getRWDashboardStats = getRWDashboardStats;
+// Get recent documents for RW dashboard
+const getRWRecentDocuments = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        const { limit = '5' } = req.query;
+        const limitNum = parseInt(limit);
+        // Get RW user's resident record
+        const rwUser = yield prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: {
+                resident: true,
+            },
+        });
+        if (!rwUser || !rwUser.resident) {
+            throw new error_middleware_1.ApiError('RW profile not found', 404);
+        }
+        const rwNumber = rwUser.resident.rwNumber;
+        // Get recent documents from this RW area
+        const documents = yield prisma.document.findMany({
+            where: {
+                requester: {
+                    resident: {
+                        rwNumber,
+                    },
+                },
+                status: 'DIPROSES', // Documents pending RW approval
+            },
+            include: {
+                requester: {
+                    select: {
+                        name: true,
+                        resident: {
+                            select: {
+                                fullName: true,
+                                rtNumber: true,
+                            },
+                        },
+                    },
+                },
+            },
+            take: limitNum,
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
+        // Format the response
+        const formattedDocuments = documents.map((document) => {
+            var _a, _b;
+            return ({
+                id: document.id,
+                type: document.type,
+                requester: ((_a = document.requester.resident) === null || _a === void 0 ? void 0 : _a.fullName) || document.requester.name,
+                rt: ((_b = document.requester.resident) === null || _b === void 0 ? void 0 : _b.rtNumber) || 'N/A',
+                status: 'Menunggu',
+                date: document.createdAt.toISOString(),
+            });
+        });
+        res.status(200).json({
+            status: 'success',
+            data: formattedDocuments,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getRWRecentDocuments = getRWRecentDocuments;
+// Get upcoming events for RW dashboard
+const getRWUpcomingEvents = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.user) {
+            throw new error_middleware_1.ApiError('User not authenticated', 401);
+        }
+        const { limit = '5' } = req.query;
+        const limitNum = parseInt(limit);
+        // Get upcoming events
+        const events = yield prisma.event.findMany({
+            where: {
+                startDate: {
+                    gte: new Date(),
+                },
+                isPublished: true,
+            },
+            include: {
+                _count: {
+                    select: {
+                        participants: true,
+                    },
+                },
+            },
+            take: limitNum,
+            orderBy: {
+                startDate: 'asc',
+            },
+        });
+        // Format the response
+        const formattedEvents = events.map((event) => ({
+            id: event.id,
+            title: event.title,
+            date: event.startDate.toISOString(),
+            location: event.location || 'Lokasi tidak ditentukan',
+            participants: event._count.participants,
+        }));
+        res.status(200).json({
+            status: 'success',
+            data: formattedEvents,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getRWUpcomingEvents = getRWUpcomingEvents;

@@ -43,10 +43,8 @@ exports.updateComplaintSchema = zod_1.z.object({
 });
 // Response complaint schema
 exports.respondComplaintSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        response: zod_1.z.string().min(5, 'Response must be at least 5 characters'),
-        status: zod_1.z.enum(['DITINDAKLANJUTI', 'SELESAI', 'DITOLAK']),
-    }),
+    response: zod_1.z.string().min(5, 'Response must be at least 5 characters'),
+    status: zod_1.z.enum(['DITINDAKLANJUTI', 'SELESAI', 'DITOLAK']),
 });
 // Search complaints schema
 exports.searchComplaintsSchema = zod_1.z.object({

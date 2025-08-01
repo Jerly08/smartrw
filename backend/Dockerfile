@@ -47,8 +47,16 @@ RUN npx prisma generate --schema=./prisma/schema.prisma
 RUN ls -la node_modules/@prisma/engines/ || echo "Engines directory not found"
 RUN ls -la node_modules/.prisma/client/ || echo "Prisma client not found"
 
-# Create uploads directory
-RUN mkdir -p uploads/residents uploads/complaints uploads/documents uploads/events
+# Create uploads directory with proper permissions
+RUN mkdir -p uploads/residents uploads/complaints uploads/documents uploads/events uploads/general
+RUN chown -R node:node uploads
+
+# Create volume mount point
+VOLUME ["/app/uploads"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1
 
 EXPOSE 4000
 CMD ["node", "dist/index.js"]

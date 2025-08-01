@@ -138,7 +138,16 @@ const uploadMultiple = (fieldName, maxCount = 5) => {
     };
 };
 exports.uploadMultiple = uploadMultiple;
-const uploadFields = (fields) => upload.fields(fields);
+// Dynamic uploadFields that chooses storage based on route
+const uploadFields = (fields) => {
+    return (req, res, next) => {
+        // Use memory storage for auth verification routes
+        if (req.originalUrl && req.originalUrl.includes('/auth/upload-verification')) {
+            return memoryUpload.fields(fields)(req, res, next);
+        }
+        return upload.fields(fields)(req, res, next);
+    };
+};
 exports.uploadFields = uploadFields;
 // Export document-specific upload middleware
 const uploadDocuments = (fieldName, maxCount = 5) => memoryUpload.array(fieldName, maxCount);

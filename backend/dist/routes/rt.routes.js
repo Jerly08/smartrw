@@ -38,21 +38,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const rtController = __importStar(require("../controllers/rt.controller"));
+const dashboardController = __importStar(require("../controllers/dashboard.controller"));
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const validation_middleware_1 = require("../middleware/validation.middleware");
 const rt_schema_1 = require("../schemas/rt.schema");
 const router = express_1.default.Router();
 // Protected routes - require authentication
 router.get('/', auth_middleware_1.authenticate, rtController.getAllRTs);
-router.get('/dashboard/stats', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), rtController.getRTDashboardStats);
+router.get('/dashboard/stats', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), dashboardController.getRTDashboardStats);
 router.get('/:id', auth_middleware_1.authenticate, rtController.getRTById);
 router.get('/number/:number', auth_middleware_1.authenticate, rtController.getRTByNumber);
 router.get('/:id/statistics', auth_middleware_1.authenticate, rtController.getRTStatistics);
 router.get('/:id/residents', auth_middleware_1.authenticate, rtController.getRTResidents);
 // New routes for dashboard
-router.get('/verifications/pending', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), rtController.getRTPendingVerifications);
-router.get('/documents/pending', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), rtController.getRTPendingDocuments);
-router.get('/events/upcoming', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), rtController.getRTUpcomingEvents);
+router.get('/verifications/pending', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), dashboardController.getRTPendingVerifications);
+router.get('/documents/pending', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), dashboardController.getRTPendingDocuments);
+router.get('/events/upcoming', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), dashboardController.getRTUpcomingEvents);
+router.post('/verifications/:id/process', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), dashboardController.processVerification);
+router.post('/documents/:id/recommend', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RT']), dashboardController.processDocumentRecommendation);
 // Routes for RW and Admin only
 router.post('/', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RW', 'ADMIN']), (0, validation_middleware_1.validateRequest)(rt_schema_1.createRTSchema), rtController.createRT);
 router.put('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['RW', 'ADMIN']), (0, validation_middleware_1.validateRequest)(rt_schema_1.updateRTSchema), rtController.updateRT);

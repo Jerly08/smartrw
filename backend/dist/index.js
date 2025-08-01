@@ -21,6 +21,7 @@ const socialAssistance_routes_1 = __importDefault(require("./routes/socialAssist
 const forum_routes_1 = __importDefault(require("./routes/forum.routes"));
 const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const rt_routes_1 = __importDefault(require("./routes/rt.routes"));
+const rw_routes_1 = __importDefault(require("./routes/rw.routes"));
 // Middleware
 const error_middleware_1 = require("./middleware/error.middleware");
 // Load environment variables
@@ -49,6 +50,7 @@ app.use('/api/social-assistance', socialAssistance_routes_1.default);
 app.use('/api/forum', forum_routes_1.default);
 app.use('/api/notifications', notification_routes_1.default);
 app.use('/api/rt', rt_routes_1.default);
+app.use('/api/rw', rw_routes_1.default);
 // Error handling middleware
 app.use(error_middleware_1.notFound);
 app.use(error_middleware_1.errorHandler);

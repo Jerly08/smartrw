@@ -57,8 +57,12 @@ router.post('/', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize
 router.put('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN', 'RW']), (0, validation_middleware_1.validateRequest)(socialAssistance_schema_1.updateSocialAssistanceSchema), socialAssistanceController.updateSocialAssistance);
 // Delete social assistance program (only Admin and RW)
 router.delete('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN', 'RW']), socialAssistanceController.deleteSocialAssistance);
+// Update social assistance status (only Admin and RW)
+router.patch('/:id/status', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN', 'RW']), socialAssistanceController.updateSocialAssistanceStatus);
 // Get recipients for a social assistance program
 router.get('/:id/recipients', auth_middleware_1.authenticate, socialAssistance_middleware_1.checkSocialAssistanceAccess, socialAssistanceController.getSocialAssistanceRecipients);
+// Export recipients to CSV
+router.get('/:id/recipients/export', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN', 'RW', 'RT']), socialAssistanceController.exportRecipients);
 // Add recipient to a social assistance program (only Admin and RW)
 router.post('/:id/recipients', auth_middleware_1.authenticate, (0, auth_middleware_1.authorize)(['ADMIN', 'RW']), (0, validation_middleware_1.validateRequest)(socialAssistance_schema_1.addRecipientSchema), socialAssistanceController.addRecipient);
 // Update recipient information (Admin, RW, and RT for their area can verify)

@@ -336,10 +336,10 @@ export default function EventParticipantsPage({ params }: { params: { id: string
                             <FiMail className="mr-1 h-3 w-3" />
                             {participant.user?.email || 'Email tidak tersedia'}
                           </div>
-                          {participant.user?.phoneNumber && (
+                          {participant.user?.resident?.phoneNumber && (
                             <div className="text-sm text-gray-500 flex items-center">
                               <FiPhone className="mr-1 h-3 w-3" />
-                              {participant.user.phoneNumber}
+                              {participant.user.resident.phoneNumber}
                             </div>
                           )}
                         </div>
