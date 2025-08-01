@@ -41,6 +41,16 @@ app.use(express.urlencoded({ extended: true }));
 // Add static file serving for uploads
 app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'smart-rw-backend',
+    version: '1.0.0'
+  });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
