@@ -56,8 +56,8 @@ export default function Sidebar() {
   const isWarga = user?.role === 'WARGA';
 
   return (
-    <div className="w-64 bg-white shadow-md flex-shrink-0">
-      <div className="p-4 border-b">
+    <div className="w-64 bg-white shadow-md flex-shrink-0 h-screen flex flex-col">
+      <div className="p-4 border-b flex-shrink-0">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
             RW
@@ -66,7 +66,7 @@ export default function Sidebar() {
         </div>
       </div>
       
-      <div className="p-4">
+      <div className="p-4 flex-1 overflow-y-auto">
         <div className="mb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
           Menu Utama
         </div>
