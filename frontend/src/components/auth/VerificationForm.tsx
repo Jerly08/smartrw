@@ -62,14 +62,35 @@ const [address, setAddress] = useState('');
     if (!fullName.trim()) newErrors.fullName = 'Nama lengkap wajib diisi';
     if (!birthDate) newErrors.birthDate = 'Tanggal lahir wajib diisi';
     if (!address.trim()) newErrors.address = 'Alamat wajib diisi';
-if (!rtNumber) newErrors.rtNumber = 'RT wajib dipilih';
+    if (!rtNumber) newErrors.rtNumber = 'RT wajib dipilih';
     if (!nik.trim() || !/^\d{16}$/.test(nik)) newErrors.nik = 'NIK harus 16 digit angka';
     if (!noKK.trim() || !/^\d{16}$/.test(noKK)) newErrors.noKK = 'Nomor KK harus 16 digit angka';
     if (!gender) newErrors.gender = 'Jenis kelamin wajib dipilih';
     if (!familyRole) newErrors.familyRole = 'Status dalam keluarga wajib dipilih';
-    // Note: File upload is optional for now, using basic verification
-    // if (!ktpFile) newErrors.ktp = 'File KTP harus diunggah';
-    // if (!kkFile) newErrors.kk = 'File KK harus diunggah';
+    
+    // File validation
+    const maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+    
+    if (ktpFile) {
+      if (ktpFile.size > maxFileSize) {
+        newErrors.ktp = 'File KTP tidak boleh lebih dari 5MB';
+      }
+      const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+      if (!validTypes.includes(ktpFile.type)) {
+        newErrors.ktp = 'File KTP harus berformat PNG, JPG, atau PDF';
+      }
+    }
+    
+    if (kkFile) {
+      if (kkFile.size > maxFileSize) {
+        newErrors.kk = 'File KK tidak boleh lebih dari 5MB';
+      }
+      const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+      if (!validTypes.includes(kkFile.type)) {
+        newErrors.kk = 'File KK harus berformat PNG, JPG, atau PDF';
+      }
+    }
+    
     return newErrors;
   };
 
@@ -91,7 +112,8 @@ if (!rtNumber) newErrors.rtNumber = 'RT wajib dipilih';
         return;
       }
 
-      const response = await authApi.verify({
+      // First, submit the basic resident data
+      const verifyResponse = await authApi.verify({
         name: fullName,
         birthDate: birthDate,
         address: address,
@@ -102,25 +124,58 @@ if (!rtNumber) newErrors.rtNumber = 'RT wajib dipilih';
         familyRole,
       });
 
-      // Show appropriate success message based on response
-      if (response.isUpdate) {
-        toast.success(response.message || 'Data verifikasi berhasil diperbarui dan menunggu verifikasi ulang dari RT');
+      // Then, if there are files to upload, upload them
+      if (ktpFile || kkFile) {
+        const formData = new FormData();
+        
+        // Add the resident data to form data for backend processing
+        formData.append('name', fullName);
+        formData.append('birthDate', birthDate);
+        formData.append('address', address);
+        formData.append('rtId', selectedRT.id.toString());
+        formData.append('nik', nik);
+        formData.append('noKK', noKK);
+        formData.append('gender', gender);
+        formData.append('familyRole', familyRole);
+        
+        // Add files
+        if (ktpFile) {
+          formData.append('ktp', ktpFile);
+        }
+        if (kkFile) {
+          formData.append('kk', kkFile);
+        }
+        
+        const uploadResponse = await authApi.uploadVerificationDocuments(formData);
+        
+        toast.success(
+          verifyResponse.isUpdate 
+            ? 'Data dan dokumen berhasil diperbarui! Menunggu verifikasi ulang dari RT.' 
+            : 'Data dan dokumen berhasil diunggah! Menunggu verifikasi dari RT.'
+        );
       } else {
-        toast.success(response.message || 'Data berhasil diunggah. Menunggu verifikasi dari RT terpilih.');
+        // Show appropriate success message for data-only submission
+        toast.success(
+          verifyResponse.isUpdate 
+            ? verifyResponse.message || 'Data verifikasi berhasil diperbarui dan menunggu verifikasi ulang dari RT'
+            : verifyResponse.message || 'Data berhasil diunggah. Menunggu verifikasi dari RT terpilih.'
+        );
       }
-      // Reset form
+      
+      // Reset only file inputs, keep data for user convenience
       setKtpFile(null);
       setKkFile(null);
-      setFullName('');
-      setBirthDate('');
-setAddress('');
-      setNik('');
-      setNoKK('');
-      setGender('');
-      setFamilyRole('');
-      setRtNumber('');
-    } catch (error) {
-      toast.error('Gagal mengunggah data. Silakan coba lagi.');
+      
+      // Reset file input elements
+      const ktpInput = document.getElementById('ktp') as HTMLInputElement;
+      const kkInput = document.getElementById('kk') as HTMLInputElement;
+      if (ktpInput) ktpInput.value = '';
+      if (kkInput) kkInput.value = '';
+      
+    } catch (error: any) {
+      console.error('Verification error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Gagal mengunggah data. Silakan coba lagi.';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -252,10 +307,10 @@ setAddress('');
           <label htmlFor="ktp" className="block text-sm font-medium text-gray-700 mb-2">Scan KTP *</label>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
             <FiUpload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-            <input id="ktp" type="file" accept="image/png,image/jpeg,image/jpg" onChange={(e) => setKtpFile(e.target.files?.[0] || null)} className="hidden" />
+            <input id="ktp" type="file" accept="image/png,image/jpeg,image/jpg,.pdf" onChange={(e) => setKtpFile(e.target.files?.[0] || null)} className="hidden" />
             <label htmlFor="ktp" className="cursor-pointer">
               <span className="text-blue-600 hover:text-blue-500">{ktpFile ? ktpFile.name : 'Pilih file KTP'}</span>
-              <p className="text-xs text-gray-500 mt-1">PNG atau JPG hingga 5MB</p>
+              <p className="text-xs text-gray-500 mt-1">PDF, PNG, atau JPG hingga 5MB</p>
             </label>
           </div>
           {errors.ktp && <p className="text-red-500 text-sm mt-1">{errors.ktp}</p>}

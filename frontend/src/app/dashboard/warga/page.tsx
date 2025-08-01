@@ -1308,21 +1308,95 @@ export default function WargaManagementPage() {
     setResidentDocuments([]);
   };
 
-  // Handle document viewing function
-  const handleViewDocument = async (doc: any) => {
-    try {
-      // Try to fetch the actual document from the API
-      const response = await fetch(doc.fileUrl);
-      
-      if (response.ok) {
-        // If document exists, open it in a new tab
-        window.open(doc.fileUrl, '_blank');
-      } else {
-        throw new Error('Document not found');
+  // Document viewer modal states
+  const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+
+  // Handle document download function
+  const handleDownloadDocument = async (doc: any) => {
+    // Check if document has been uploaded
+    if (!doc.filename || doc.status === 'not_uploaded' || doc.status === 'pending') {
+      toast.error(`Dokumen ${doc.type} belum diunggah atau tersedia.`);
+      return;
+    }
+    
+    // Only download if document status is 'uploaded'
+    if (doc.status === 'uploaded' && selectedResidentForDocs) {
+      try {
+        await residentApi.downloadResidentDocument(selectedResidentForDocs.id, doc.filename);
+        toast.success(`Dokumen ${doc.type} berhasil diunduh.`);
+      } catch (error) {
+        console.error('Error downloading document:', error);
+        toast.error(`Gagal mengunduh dokumen ${doc.type}.`);
       }
-    } catch (error) {
-      console.error('Error viewing document:', error);
-      toast.error(`Dokumen ${doc.type} tidak dapat ditampilkan. File mungkin belum diunggah atau tidak tersedia.`);
+    } else {
+      toast.error(`Dokumen ${doc.type} tidak dapat diunduh.`);
+    }
+  };
+
+  // Close document viewer
+  const closeDocumentViewer = () => {
+    setIsDocumentViewerOpen(false);
+    setSelectedDocument(null);
+  };
+
+  // Get file extension to determine viewer type
+  const getFileExtension = (filename: string) => {
+    return filename.split('.').pop()?.toLowerCase() || '';
+  };
+
+  // Render document content based on file type
+  const renderDocumentContent = (doc: any) => {
+    const extension = getFileExtension(doc.filename);
+    
+    if (extension === 'pdf') {
+      return (
+        <div className="w-full h-[600px] border rounded-lg overflow-hidden">
+          <iframe
+            src={doc.fileUrl}
+            className="w-full h-full"
+            title={`${doc.type} - ${doc.filename}`}
+          />
+        </div>
+      );
+    } else if (['png', 'jpg', 'jpeg'].includes(extension)) {
+      return (
+        <div className="w-full flex justify-center items-center bg-gray-50 rounded-lg overflow-hidden">
+          <img
+            src={doc.fileUrl}
+            alt={`${doc.type} - ${doc.filename}`}
+            className="max-w-full max-h-[600px] object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `
+                  <div class="flex flex-col items-center justify-center h-[400px] bg-gray-100 rounded-lg text-gray-500">
+                    <div class="text-6xl mb-4">📄</div>
+                    <p class="text-lg font-medium mb-2">Gambar tidak dapat dimuat</p>
+                    <p class="text-sm">File: ${doc.filename}</p>
+                  </div>
+                `;
+              }
+            }}
+          />
+        </div>
+      );
+    } else {
+      return (
+        <div className="w-full h-[400px] flex flex-col justify-center items-center bg-gray-50 rounded-lg text-gray-500">
+          <div className="text-6xl mb-4">📄</div>
+          <p className="text-lg font-medium mb-2">Tipe file tidak didukung untuk preview</p>
+          <p className="text-sm mb-4">File: {doc.filename}</p>
+          <Button
+            variant="outline"
+            onClick={() => window.open(doc.fileUrl, '_blank')}
+          >
+            Download File
+          </Button>
+        </div>
+      );
     }
   };
 
@@ -1910,6 +1984,7 @@ export default function WargaManagementPage() {
                           <TableHead>Jenis Dokumen</TableHead>
                           <TableHead>Nama File</TableHead>
                           <TableHead>Tanggal Upload</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead>Aksi</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1918,14 +1993,25 @@ export default function WargaManagementPage() {
                           <TableRow key={doc.id}>
                             <TableCell className="font-medium">{doc.type}</TableCell>
                             <TableCell>{doc.filename}</TableCell>
-                            <TableCell>{new Date(doc.uploadedAt).toLocaleDateString('id-ID')}</TableCell>
+                            <TableCell>
+                              {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('id-ID') : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {doc.status === 'uploaded' ? (
+                                <Badge variant="default" className="bg-green-100 text-green-800">Tersedia</Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-gray-100 text-gray-800">Belum Upload</Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => handleViewDocument(doc)}
+                                onClick={() => handleDownloadDocument(doc)}
+                                disabled={doc.status === 'not_uploaded'}
                               >
-                                Lihat Dokumen
+                                <FiDownload className="mr-1 h-4 w-4" />
+                                Unduh Dokumen
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1944,6 +2030,51 @@ export default function WargaManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Enhanced Document Viewer Modal */}
+      <Dialog open={isDocumentViewerOpen} onOpenChange={setIsDocumentViewerOpen}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh]" aria-describedby="document-viewer-description">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDocument ? `${selectedDocument.type} - ${selectedDocument.filename}` : 'Dokumen'}
+            </DialogTitle>
+          </DialogHeader>
+          <div id="document-viewer-description" className="sr-only">
+            Modal untuk melihat dokumen verifikasi warga dalam format PDF, PNG, atau JPG
+          </div>
+          
+          {selectedDocument ? (
+            <div className="space-y-4">
+              {/* Document info */}
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="flex justify-between items-center text-sm">
+                  <div>
+                    <span className="font-medium">Jenis:</span> {selectedDocument.type}
+                  </div>
+                  <div>
+                    <span className="font-medium">File:</span> {selectedDocument.filename}
+                  </div>
+                  <div>
+                    <span className="font-medium">Ukuran:</span> {getFileExtension(selectedDocument.filename).toUpperCase()}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Document content */}
+              <div className="min-h-[500px]">
+                {renderDocumentContent(selectedDocument)}
+              </div>
+            </div>
+          ) : null}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => window.open(selectedDocument?.fileUrl, '_blank')}>
+              Buka di Tab Baru
+            </Button>
+            <Button onClick={closeDocumentViewer}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-} 
+}

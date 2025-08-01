@@ -32,6 +32,9 @@ router.get('/:id', authenticate, checkResidentAccess, residentController.getResi
 // Get resident documents
 router.get('/:id/documents', authenticate, checkResidentAccess, residentController.getResidentDocuments);
 
+// Download resident document
+router.get('/:id/documents/download/:filename', authenticate, checkResidentAccess, residentController.downloadResidentDocument);
+
 // Upload document for resident
 router.post(
   '/:id/documents/upload',

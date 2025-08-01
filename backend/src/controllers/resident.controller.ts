@@ -357,49 +357,76 @@ export const getResidentDocuments = async (req: Request, res: Response, next: Ne
     
     // Check if files actually exist on disk
     const uploadsPath = path.join(__dirname, '../../uploads/residents');
-    const ktpFilename = `ktp_${resident.nik}.jpg`;
-    const kkFilename = `kk_${resident.noKK}.jpg`;
-    const ktpPath = path.join(uploadsPath, ktpFilename);
-    const kkPath = path.join(uploadsPath, kkFilename);
+    const possibleExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
     
     const documents = [];
     
-    // Check KTP file
-    if (fs.existsSync(ktpPath)) {
-      documents.push({
-        id: 1,
-        type: 'KTP',
-        filename: ktpFilename,
-        uploadedAt: new Date().toISOString(),
-        status: 'uploaded',
-        fileUrl: `/api/uploads/residents/${ktpFilename}`
-      });
+    // Check KTP file with multiple possible extensions
+    let ktpFound = false;
+    let ktpFileInfo = null;
+    
+    for (const ext of possibleExtensions) {
+      const ktpFilename = `ktp_${resident.nik}${ext}`;
+      const ktpPath = path.join(uploadsPath, ktpFilename);
+      
+      if (fs.existsSync(ktpPath)) {
+        const stats = fs.statSync(ktpPath);
+        ktpFileInfo = {
+          id: 1,
+          type: 'KTP',
+          filename: ktpFilename,
+          uploadedAt: stats.mtime.toISOString(),
+          status: 'uploaded',
+          fileUrl: `/api/uploads/residents/${ktpFilename}`
+        };
+        ktpFound = true;
+        break;
+      }
+    }
+    
+    if (ktpFound && ktpFileInfo) {
+      documents.push(ktpFileInfo);
     } else {
       documents.push({
         id: 1,
         type: 'KTP',
-        filename: ktpFilename,
+        filename: `ktp_${resident.nik}.jpg`,
         uploadedAt: null,
         status: 'not_uploaded',
         fileUrl: null
       });
     }
     
-    // Check KK file
-    if (fs.existsSync(kkPath)) {
-      documents.push({
-        id: 2,
-        type: 'KK',
-        filename: kkFilename,
-        uploadedAt: new Date().toISOString(),
-        status: 'uploaded',
-        fileUrl: `/api/uploads/residents/${kkFilename}`
-      });
+    // Check KK file with multiple possible extensions
+    let kkFound = false;
+    let kkFileInfo = null;
+    
+    for (const ext of possibleExtensions) {
+      const kkFilename = `kk_${resident.noKK}${ext}`;
+      const kkPath = path.join(uploadsPath, kkFilename);
+      
+      if (fs.existsSync(kkPath)) {
+        const stats = fs.statSync(kkPath);
+        kkFileInfo = {
+          id: 2,
+          type: 'KK',
+          filename: kkFilename,
+          uploadedAt: stats.mtime.toISOString(),
+          status: 'uploaded',
+          fileUrl: `/api/uploads/residents/${kkFilename}`
+        };
+        kkFound = true;
+        break;
+      }
+    }
+    
+    if (kkFound && kkFileInfo) {
+      documents.push(kkFileInfo);
     } else {
       documents.push({
         id: 2,
         type: 'KK',
-        filename: kkFilename,
+        filename: `kk_${resident.noKK}.jpg`,
         uploadedAt: null,
         status: 'not_uploaded',
         fileUrl: null
@@ -412,6 +439,78 @@ export const getResidentDocuments = async (req: Request, res: Response, next: Ne
         documents
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Download resident document
+export const downloadResidentDocument = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const residentId = parseInt(req.params.id);
+    const { filename } = req.params;
+    
+    if (isNaN(residentId)) {
+      throw new ApiError('Invalid resident ID', 400);
+    }
+    
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Get resident to verify they exist and get their NIK/noKK
+    const resident = await prisma.resident.findUnique({
+      where: { id: residentId }
+    });
+    
+    if (!resident) {
+      throw new ApiError('Resident not found', 404);
+    }
+    
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Validate filename format and security
+    const validFilenamePattern = /^(ktp|kk)_(\d+)\.(jpg|jpeg|png|pdf)$/i;
+    if (!validFilenamePattern.test(filename)) {
+      throw new ApiError('Invalid filename format', 400);
+    }
+    
+    // Verify the filename matches the resident's NIK or noKK
+    const isKtpFile = filename.startsWith(`ktp_${resident.nik}`);
+    const isKkFile = filename.startsWith(`kk_${resident.noKK}`);
+    
+    if (!isKtpFile && !isKkFile) {
+      throw new ApiError('Filename does not match resident data', 403);
+    }
+    
+    // Check if file exists
+    const uploadsPath = path.join(__dirname, '../../uploads/residents');
+    const filePath = path.join(uploadsPath, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      throw new ApiError('Document not found', 404);
+    }
+    
+    // Set appropriate headers for download
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    
+    if (ext === '.pdf') {
+      contentType = 'application/pdf';
+    } else if (['.jpg', '.jpeg'].includes(ext)) {
+      contentType = 'image/jpeg';
+    } else if (ext === '.png') {
+      contentType = 'image/png';
+    }
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    // Stream the file to the response
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
   } catch (error) {
     next(error);
   }

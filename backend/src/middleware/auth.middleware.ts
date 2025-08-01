@@ -102,20 +102,49 @@ export const checkResidentAccess = async (req: Request, res: Response, next: Nex
       return res.status(404).json({ message: 'Resident not found' });
     }
 
-    if (req.user.role === 'RT') {
-      // RT can only access residents in their RT
-      const rtResident = await prisma.resident.findFirst({
-        where: { userId: req.user.id },
-      });
-
-      if (!rtResident) {
-        return res.status(403).json({ message: 'RT profile not found' });
+  if (req.user.role === 'RT') {
+    // RT can access residents in their RT area or residents who registered under their RT
+    const rtUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        resident: true
       }
+    });
 
-      if (targetResident.rtNumber !== rtResident.rtNumber || 
-          targetResident.rwNumber !== rtResident.rwNumber) {
-        return res.status(403).json({ message: 'You can only access residents in your RT' });
+    if (!rtUser || !rtUser.resident) {
+      return res.status(403).json({ message: 'RT profile not found' });
+    }
+
+    // Check if the target resident is in their RT area OR if the resident selected this RT during registration
+    const isInRTArea = targetResident.rtNumber === rtUser.resident.rtNumber && 
+                       targetResident.rwNumber === rtUser.resident.rwNumber;
+    
+    // Also check if this resident was registered/verified by this RT user
+    const isRegisteredByRT = await prisma.resident.findFirst({
+      where: {
+        id: residentId,
+        OR: [
+          {
+            // Direct RT area match
+            rtNumber: rtUser.resident.rtNumber,
+            rwNumber: rtUser.resident.rwNumber
+          },
+          {
+            // Or resident chose this RT during verification
+            rt: {
+              number: rtUser.resident.rtNumber.toString()
+            }
+          }
+        ]
+      },
+      include: {
+        rt: true
       }
+    });
+    
+    if (!isInRTArea && !isRegisteredByRT) {
+      return res.status(403).json({ message: 'You can only access residents in your RT area or those registered under your RT' });
+    }
     } else if (req.user.role === 'WARGA') {
       // Warga can only access their own record and family members
       const wargaResident = await prisma.resident.findFirst({

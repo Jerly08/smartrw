@@ -144,13 +144,19 @@ export const verifyResident = async (req: Request, res: Response, next: NextFunc
     }
     
     const userId = req.user.id;
-const { name, birthDate, address, rtId, nik, noKK, gender, familyRole } = req.body;
+    const { name, birthDate, address, rtId, nik, noKK, gender, familyRole } = req.body;
+    
+    // Convert rtId to integer since Prisma expects number
+    const rtIdNumber = parseInt(rtId, 10);
+    if (isNaN(rtIdNumber)) {
+      throw new ApiError('Invalid RT ID provided', 400);
+    }
     
     const result = await authService.verifyResidentWithRT(userId, {
       name,
       birthDate,
       address,
-      rtId,
+      rtId: rtIdNumber,
       nik,
       noKK,
       gender,
@@ -194,12 +200,31 @@ export const getAvailableRTs = async (req: Request, res: Response, next: NextFun
 // Upload verification documents
 export const uploadVerificationDocuments = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('Upload verification documents called');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.originalUrl);
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('Body keys:', Object.keys(req.body));
+    console.log('Files keys:', req.files ? Object.keys(req.files) : 'No files');
+    
     if (!req.user) {
       throw new ApiError('User not authenticated', 401);
     }
     
     const userId = req.user.id;
     const { name, birthDate, address, rtId, nik, noKK, gender, familyRole } = req.body;
+    
+    console.log('Request body data:', {
+      name,
+      birthDate,
+      address,
+      rtId,
+      rtIdType: typeof rtId,
+      nik,
+      noKK,
+      gender,
+      familyRole
+    });
     
     // Get the current user's resident data to get NIK and noKK
     const user = await authService.getUserProfile(userId);
@@ -219,21 +244,51 @@ export const uploadVerificationDocuments = async (req: Request, res: Response, n
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const uploadedFiles: string[] = [];
     
-    // Validate file types (only PNG/JPG allowed)
-    const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    console.log('Files received:', {
+      hasKtp: !!(files.ktp && files.ktp[0]),
+      hasKk: !!(files.kk && files.kk[0]),
+      ktpBuffer: files.ktp && files.ktp[0] ? !!files.ktp[0].buffer : false,
+      kkBuffer: files.kk && files.kk[0] ? !!files.kk[0].buffer : false
+    });
+    
+    // Validate file types (PNG/JPG/PDF allowed)
+    const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
     
     // Process KTP file
     if (files.ktp && files.ktp[0]) {
       const ktpFile = files.ktp[0];
       
+      console.log('Processing KTP file:', {
+        filename: ktpFile.originalname,
+        mimetype: ktpFile.mimetype,
+        size: ktpFile.size,
+        hasBuffer: !!ktpFile.buffer,
+        bufferLength: ktpFile.buffer ? ktpFile.buffer.length : 0
+      });
+      
       if (!allowedMimeTypes.includes(ktpFile.mimetype)) {
-        throw new ApiError('KTP file must be PNG or JPG format only', 400);
+        throw new ApiError('KTP file must be PNG, JPG, or PDF format only', 400);
       }
       
-      const ktpFileName = `ktp_${residentNik}.jpg`;
+      if (!ktpFile.buffer) {
+        throw new ApiError('KTP file buffer is missing', 400);
+      }
+      
+      // Determine file extension based on mime type
+      const fileExtension = ktpFile.mimetype === 'application/pdf' ? '.pdf' : '.jpg';
+      const ktpFileName = `ktp_${residentNik}${fileExtension}`;
       const ktpPath = path.join(uploadDir, ktpFileName);
       
-      // Write file to disk
+      // Remove existing files with different extensions
+      const possibleExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+      for (const ext of possibleExtensions) {
+        const existingPath = path.join(uploadDir, `ktp_${residentNik}${ext}`);
+        if (fs.existsSync(existingPath)) {
+          await fs.promises.unlink(existingPath);
+        }
+      }
+      
+      // Write new file to disk
       await fs.promises.writeFile(ktpPath, ktpFile.buffer);
       uploadedFiles.push(`/uploads/residents/${ktpFileName}`);
     }
@@ -242,18 +297,40 @@ export const uploadVerificationDocuments = async (req: Request, res: Response, n
     if (files.kk && files.kk[0]) {
       const kkFile = files.kk[0];
       
+      console.log('Processing KK file:', {
+        filename: kkFile.originalname,
+        mimetype: kkFile.mimetype,
+        size: kkFile.size,
+        hasBuffer: !!kkFile.buffer,
+        bufferLength: kkFile.buffer ? kkFile.buffer.length : 0
+      });
+      
       if (!allowedMimeTypes.includes(kkFile.mimetype)) {
-        throw new ApiError('KK file must be PNG or JPG format only', 400);
+        throw new ApiError('KK file must be PNG, JPG, or PDF format only', 400);
       }
       
-      const kkFileName = `kk_${residentNoKK}.jpg`;
+      if (!kkFile.buffer) {
+        throw new ApiError('KK file buffer is missing', 400);
+      }
+      
+      // Determine file extension based on mime type
+      const fileExtension = kkFile.mimetype === 'application/pdf' ? '.pdf' : '.jpg';
+      const kkFileName = `kk_${residentNoKK}${fileExtension}`;
       const kkPath = path.join(uploadDir, kkFileName);
       
-      // Write file to disk
+      // Remove existing files with different extensions
+      const possibleExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+      for (const ext of possibleExtensions) {
+        const existingPath = path.join(uploadDir, `kk_${residentNoKK}${ext}`);
+        if (fs.existsSync(existingPath)) {
+          await fs.promises.unlink(existingPath);
+        }
+      }
+      
+      // Write new file to disk
       await fs.promises.writeFile(kkPath, kkFile.buffer);
       uploadedFiles.push(`/uploads/residents/${kkFileName}`);
     }
-    
     if (uploadedFiles.length === 0) {
       throw new ApiError('No valid files uploaded', 400);
     }
@@ -261,11 +338,17 @@ export const uploadVerificationDocuments = async (req: Request, res: Response, n
     // Update resident verification data if provided
     let result;
     if (name && birthDate && address && rtId && nik && noKK && gender && familyRole) {
+      // Convert rtId to integer since Prisma expects number
+      const rtIdNumber = parseInt(rtId, 10);
+      if (isNaN(rtIdNumber)) {
+        throw new ApiError('Invalid RT ID provided', 400);
+      }
+      
       result = await authService.verifyResidentWithRT(userId, {
         name,
         birthDate,
         address,
-        rtId,
+        rtId: rtIdNumber,
         nik,
         noKK,
         gender,
