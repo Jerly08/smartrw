@@ -593,3 +593,334 @@ export const processDocumentRecommendation = async (req: Request, res: Response,
     next(error);
   }
 };
+
+// Get RW dashboard statistics
+export const getRWDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+
+    // Get RW user's resident record to find their RW number
+    const rwUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        resident: true,
+      },
+    });
+
+    if (!rwUser || !rwUser.resident) {
+      throw new ApiError('RW profile not found', 404);
+    }
+
+    const rwNumber = rwUser.resident.rwNumber;
+
+    // Get resident statistics by RT for this RW
+    const rtStats = await prisma.resident.groupBy({
+      by: ['rtNumber'],
+      where: {
+        rwNumber,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Get verified residents count by RT
+    const verifiedStats = await prisma.resident.groupBy({
+      by: ['rtNumber'],
+      where: {
+        rwNumber,
+        isVerified: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Combine the stats
+    const byRT = rtStats.map(rt => {
+      const verified = verifiedStats.find(v => v.rtNumber === rt.rtNumber)?._count.id || 0;
+      return {
+        rtNumber: rt.rtNumber,
+        count: rt._count.id,
+        verified
+      };
+    });
+
+    const totalResidents = rtStats.reduce((sum, rt) => sum + rt._count.id, 0);
+
+    // Get document statistics
+    const pendingDocuments = await prisma.document.count({
+      where: {
+        requester: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'DIPROSES', // Documents that are processed by RT but pending RW approval
+      },
+    });
+
+    const incomingDocuments = await prisma.document.count({
+      where: {
+        requester: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'DIPROSES',
+      },
+    });
+
+    const outgoingDocuments = await prisma.document.count({
+      where: {
+        requester: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'SELESAI',
+        createdAt: {
+          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // This month
+        },
+      },
+    });
+
+    // Get complaint statistics
+    const totalComplaints = await prisma.complaint.count({
+      where: {
+        creator: {
+          resident: {
+            rwNumber,
+          },
+        },
+      },
+    });
+
+    const openComplaints = await prisma.complaint.count({
+      where: {
+        creator: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'DITERIMA',
+      },
+    });
+
+    const inProgressComplaints = await prisma.complaint.count({
+      where: {
+        creator: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'DITINDAKLANJUTI',
+      },
+    });
+
+    const resolvedComplaints = await prisma.complaint.count({
+      where: {
+        creator: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'SELESAI',
+      },
+    });
+
+    // Get event statistics
+    const upcomingEvents = await prisma.event.count({
+      where: {
+        startDate: {
+          gte: new Date(),
+        },
+        isPublished: true,
+        OR: [
+          { targetRTs: null }, // Events for all RTs
+          { targetRTs: { contains: rwNumber } }, // Events targeting this RW
+        ],
+      },
+    });
+
+    const totalEvents = await prisma.event.count({
+      where: {
+        OR: [
+          { targetRTs: null },
+          { targetRTs: { contains: rwNumber } },
+        ],
+      },
+    });
+
+    // Get social assistance statistics
+    const activeSocialAssistance = await prisma.socialAssistance.count({
+      where: {
+        status: 'DISALURKAN',
+      },
+    });
+
+    const totalRecipients = await prisma.socialAssistanceRecipient.count({
+      where: {
+        resident: {
+          rwNumber,
+        },
+      },
+    });
+
+    const stats = {
+      residents: {
+        total: totalResidents,
+        byRT,
+      },
+      documents: {
+        incoming: incomingDocuments,
+        outgoing: outgoingDocuments,
+        pending: pendingDocuments,
+      },
+      complaints: {
+        total: totalComplaints,
+        open: openComplaints,
+        inProgress: inProgressComplaints,
+        resolved: resolvedComplaints,
+      },
+      events: {
+        upcoming: upcomingEvents,
+        total: totalEvents,
+      },
+      assistance: {
+        active: activeSocialAssistance,
+        recipients: totalRecipients,
+      },
+    };
+
+    res.status(200).json({
+      status: 'success',
+      data: stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get recent documents for RW dashboard
+export const getRWRecentDocuments = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+
+    const { limit = '5' } = req.query;
+    const limitNum = parseInt(limit as string);
+
+    // Get RW user's resident record
+    const rwUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        resident: true,
+      },
+    });
+
+    if (!rwUser || !rwUser.resident) {
+      throw new ApiError('RW profile not found', 404);
+    }
+
+    const rwNumber = rwUser.resident.rwNumber;
+
+    // Get recent documents from this RW area
+    const documents = await prisma.document.findMany({
+      where: {
+        requester: {
+          resident: {
+            rwNumber,
+          },
+        },
+        status: 'DIPROSES', // Documents pending RW approval
+      },
+      include: {
+        requester: {
+          select: {
+            name: true,
+            resident: {
+              select: {
+                fullName: true,
+                rtNumber: true,
+              },
+            },
+          },
+        },
+      },
+      take: limitNum,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Format the response
+    const formattedDocuments = documents.map((document) => ({
+      id: document.id,
+      type: document.type,
+      requester: document.requester.resident?.fullName || document.requester.name,
+      rt: document.requester.resident?.rtNumber || 'N/A',
+      status: 'Menunggu',
+      date: document.createdAt.toISOString(),
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      data: formattedDocuments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get upcoming events for RW dashboard
+export const getRWUpcomingEvents = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('User not authenticated', 401);
+    }
+
+    const { limit = '5' } = req.query;
+    const limitNum = parseInt(limit as string);
+
+    // Get upcoming events
+    const events = await prisma.event.findMany({
+      where: {
+        startDate: {
+          gte: new Date(),
+        },
+        isPublished: true,
+      },
+      include: {
+        _count: {
+          select: {
+            participants: true,
+          },
+        },
+      },
+      take: limitNum,
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+
+    // Format the response
+    const formattedEvents = events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      date: event.startDate.toISOString(),
+      location: event.location || 'Lokasi tidak ditentukan',
+      participants: event._count.participants,
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      data: formattedEvents,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -10,7 +10,7 @@ import {
   FiBarChart2,
   FiMessageSquare
 } from 'react-icons/fi';
-import api from '@/lib/api';
+import { dashboardApi } from '@/lib/api';
 
 // Types for RW dashboard statistics
 interface RWStats {
@@ -43,100 +43,6 @@ interface RWStats {
   };
 }
 
-// Mock data - replace with API calls
-const mockRWStats: RWStats = {
-  residents: {
-    total: 300,
-    byRT: [
-      { rtNumber: '001', count: 60, verified: 58 },
-      { rtNumber: '002', count: 55, verified: 52 },
-      { rtNumber: '003', count: 65, verified: 63 },
-      { rtNumber: '004', count: 70, verified: 67 },
-      { rtNumber: '005', count: 50, verified: 45 }
-    ]
-  },
-  documents: {
-    incoming: 12,
-    outgoing: 8,
-    pending: 5
-  },
-  complaints: {
-    total: 15,
-    open: 3,
-    inProgress: 5,
-    resolved: 7
-  },
-  events: {
-    upcoming: 2,
-    total: 28
-  },
-  assistance: {
-    active: 2,
-    recipients: 45
-  }
-};
-
-// Mock upcoming events
-const upcomingEvents = [
-  {
-    id: 1,
-    title: 'Kerja Bakti RW',
-    date: '2024-07-20T07:00:00',
-    location: 'Lapangan RW',
-    participants: 35
-  },
-  {
-    id: 2,
-    title: 'Rapat Koordinasi RT',
-    date: '2024-07-25T19:00:00',
-    location: 'Balai RW',
-    participants: 12
-  }
-];
-
-// Mock recent documents
-const recentDocuments = [
-  {
-    id: 1,
-    type: 'Surat Domisili',
-    requester: 'Budi Santoso',
-    rt: '002',
-    status: 'Menunggu',
-    date: '2024-07-16T10:30:00'
-  },
-  {
-    id: 2,
-    type: 'Surat Keterangan Tidak Mampu',
-    requester: 'Siti Aminah',
-    rt: '003',
-    status: 'Menunggu',
-    date: '2024-07-16T09:15:00'
-  },
-  {
-    id: 3,
-    type: 'Surat Pengantar KTP',
-    requester: 'Ahmad Rizki',
-    rt: '001',
-    status: 'Menunggu',
-    date: '2024-07-15T14:45:00'
-  },
-  {
-    id: 4,
-    type: 'Surat Keterangan Usaha',
-    requester: 'Dewi Sartika',
-    rt: '004',
-    status: 'Diproses',
-    date: '2024-07-15T11:20:00'
-  },
-  {
-    id: 5,
-    type: 'Surat Keterangan Kelahiran',
-    requester: 'Rina Wati',
-    rt: '005',
-    status: 'Diproses',
-    date: '2024-07-14T16:10:00'
-  }
-];
 
 // Format date helper
 const formatDate = (dateString: string) => {
@@ -177,22 +83,31 @@ const getStatusColor = (status: string) => {
 };
 
 export default function RWDashboard() {
-  const [stats, setStats] = useState<RWStats>(mockRWStats);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<RWStats | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [recentDocuments, setRecentDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
+      setError(null);
       try {
-        // Uncomment and implement when API is ready
-        // const response = await api.get('/rw/dashboard/stats');
-        // setStats(response.data);
+        // Fetch all dashboard data in parallel
+        const [statsResponse, eventsResponse, documentsResponse] = await Promise.all([
+          dashboardApi.getRWDashboardStats(),
+          dashboardApi.getRWUpcomingEvents(5),
+          dashboardApi.getRWRecentDocuments(5)
+        ]);
         
-        // Using mock data for now
-        setStats(mockRWStats);
+        setStats(statsResponse);
+        setUpcomingEvents(eventsResponse);
+        setRecentDocuments(documentsResponse);
       } catch (error) {
         console.error('Failed to fetch RW dashboard data:', error);
+        setError('Gagal memuat data dashboard. Silakan coba lagi.');
       } finally {
         setLoading(false);
       }
@@ -205,6 +120,30 @@ export default function RWDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-6">
+        <h3 className="text-lg font-medium mb-2">Error</h3>
+        <p>{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+        >
+          Coba Lagi
+        </button>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="bg-gray-50 border border-gray-200 text-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-medium mb-2">Tidak Ada Data</h3>
+        <p>Data dashboard tidak tersedia</p>
       </div>
     );
   }

@@ -1061,6 +1061,43 @@ export const dashboardApi = {
       return { success: true };
     }
   },
+
+  // Get RW dashboard statistics
+  getRWDashboardStats: async () => {
+    try {
+      const response = await api.get('/rw/dashboard/stats');
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching RW dashboard stats:', error);
+      throw error;
+    }
+  },
+
+  // Get recent documents for RW dashboard
+  getRWRecentDocuments: async (limit?: number) => {
+    try {
+      const response = await api.get('/rw/dashboard/documents', { 
+        params: { limit: limit || 5 } 
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching RW recent documents:', error);
+      throw error;
+    }
+  },
+
+  // Get upcoming events for RW dashboard
+  getRWUpcomingEvents: async (limit?: number) => {
+    try {
+      const response = await api.get('/rw/dashboard/events', { 
+        params: { limit: limit || 5 } 
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching RW upcoming events:', error);
+      throw error;
+    }
+  },
 };
 
 // RW Management API functions
