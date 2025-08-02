@@ -10,7 +10,7 @@ interface EventInput {
   description: string;
   location: string;
   startDate: Date;
-  endDate: Date;
+  endDate?: Date;
   category: EventCategory;
   isPublished?: boolean;
   targetRTs?: string; // JSON string of RT numbers
@@ -288,7 +288,7 @@ export const createEventNotifications = async (
     title: string; 
     category: any; // Changed from string to any to accept EventCategory
     startDate: Date; 
-    endDate: Date; 
+    endDate?: Date | null; 
     location: string; 
     targetRTs?: string | null; 
     isPublished?: boolean;
@@ -352,8 +352,10 @@ export const createEventNotifications = async (
               eventLocation: event.location,
               creatorRole: creator.role,
             },
-            // Set expiration to event end date + 1 day for visibility
-            expiresAt: new Date(event.endDate.getTime() + 24 * 60 * 60 * 1000),
+            // Set expiration to event end date + 1 day, or 7 days from start if no end date
+            expiresAt: event.endDate 
+              ? new Date(event.endDate.getTime() + 24 * 60 * 60 * 1000)
+              : new Date(event.startDate.getTime() + 7 * 24 * 60 * 60 * 1000),
           }
         );
       }
@@ -405,8 +407,8 @@ export const createEventNotifications = async (
                 creatorRole: creator.role,
                 targetRTs: targetRTNumbers,
               },
-              // Set expiration to event end date
-              expiresAt: event.endDate,
+              // Set expiration to event end date, or 7 days from start if no end date
+              expiresAt: event.endDate || new Date(event.startDate.getTime() + 7 * 24 * 60 * 60 * 1000),
             }
           );
         }

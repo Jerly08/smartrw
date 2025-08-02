@@ -39,7 +39,7 @@ export default function CreateEventPage() {
       description: '',
       location: '',
       startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
+      endDate: '',
       category: undefined,
       targetRTs: [],
       isPublished: false,
@@ -248,7 +248,7 @@ export default function CreateEventPage() {
 
             <div>
               <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                Tanggal & Waktu Selesai <span className="text-red-500">*</span>
+                Tanggal & Waktu Selesai
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

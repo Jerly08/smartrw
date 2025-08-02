@@ -72,7 +72,10 @@ export const createWelcomeNotifications = async (userId: number) => {
     const activeEvents = await prisma.event.findMany({
       where: {
         isPublished: true,
-        endDate: { gte: now }, // Events that haven't ended yet
+        OR: [
+          { endDate: { gte: now } }, // Events that haven't ended yet
+          { endDate: null }, // Events without end date (ongoing)
+        ],
       },
       include: {
         creator: {
@@ -129,7 +132,7 @@ export const createWelcomeNotifications = async (userId: number) => {
             creatorRole: event.creator.role,
             isWelcomeNotification: true,
           },
-          expiresAt: event.endDate,
+          expiresAt: event.endDate || new Date(event.startDate.getTime() + 7 * 24 * 60 * 60 * 1000),
         });
       }
     }

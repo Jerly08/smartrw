@@ -249,7 +249,7 @@ model Event {
   description  String             @db.Text
   location     String
   startDate    DateTime
-  endDate      DateTime
+  endDate      DateTime?
   category     EventCategory
   isPublished  Boolean            @default(false)
   targetRTs    String? // JSON array of RT numbers

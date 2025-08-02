@@ -26,7 +26,7 @@ export interface Event {
   description: string;
   location: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
   category: EventCategory;
   isPublished: boolean;
   targetRTs?: string; // JSON string of RT numbers
@@ -74,7 +74,7 @@ export const eventFormSchema = z.object({
   startDate: z.string().refine(date => !isNaN(Date.parse(date)), {
     message: 'Tanggal mulai tidak valid',
   }),
-  endDate: z.string().refine(date => !isNaN(Date.parse(date)), {
+  endDate: z.string().optional().refine(date => !date || !isNaN(Date.parse(date)), {
     message: 'Tanggal selesai tidak valid',
   }),
   category: z.nativeEnum(EventCategory, {
@@ -86,7 +86,7 @@ export const eventFormSchema = z.object({
 
 // Add validation to ensure end date is after start date
 export const eventFormSchemaWithDateValidation = eventFormSchema.refine(
-  data => new Date(data.endDate) >= new Date(data.startDate),
+  data => !data.endDate || new Date(data.endDate) >= new Date(data.startDate),
   {
     message: 'Tanggal selesai harus setelah tanggal mulai',
     path: ['endDate'],
