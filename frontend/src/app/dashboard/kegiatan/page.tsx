@@ -298,7 +298,7 @@ const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputEl
                       <div className="text-sm font-medium text-gray-700">Tanggal</div>
                       <div className="text-sm text-gray-500">
                         {formatDate(event.startDate)}
-                        {new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && (
+                        {event.endDate && new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && (
                           <span> - {formatDate(event.endDate)}</span>
                         )}
                       </div>
@@ -310,7 +310,7 @@ const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputEl
                     <div>
                       <div className="text-sm font-medium text-gray-700">Waktu</div>
                       <div className="text-sm text-gray-500">
-                        {formatTime(event.startDate)} - {formatTime(event.endDate)}
+                        {formatTime(event.startDate)} - {event.endDate ? formatTime(event.endDate) : 'Selesai'}
                       </div>
                     </div>
                   </div>
@@ -390,7 +390,7 @@ const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputEl
                   )}
                   
                   {/* RSVP button for Warga */}
-                  {isWarga && new Date(event.endDate) > new Date() && (
+                  {isWarga && (event.endDate ? new Date(event.endDate) > new Date() : true) && (
                     <Link href={`/dashboard/kegiatan/${event.id}/rsvp`} className="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
                       <FiCheck className="mr-1" /> RSVP
                     </Link>

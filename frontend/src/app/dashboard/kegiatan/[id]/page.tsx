@@ -163,7 +163,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   };
 
   const isEventPassed = () => {
-    if (!event) return false;
+    if (!event || !event.endDate) return false;
     return new Date(event.endDate) < new Date();
   };
 
@@ -260,7 +260,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                 <div className="text-sm font-medium text-gray-700">Tanggal</div>
                 <div className="text-gray-600">
                   {formatDate(event.startDate)}
-                  {new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && (
+                  {event.endDate && new Date(event.startDate).toDateString() !== new Date(event.endDate).toDateString() && (
                     <span> - {formatDate(event.endDate)}</span>
                   )}
                 </div>
@@ -272,7 +272,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
               <div>
                 <div className="text-sm font-medium text-gray-700">Waktu</div>
                 <div className="text-gray-600">
-                  {formatTime(event.startDate)} - {formatTime(event.endDate)}
+                  {formatTime(event.startDate)} - {event.endDate ? formatTime(event.endDate) : 'Selesai'}
                 </div>
               </div>
             </div>
