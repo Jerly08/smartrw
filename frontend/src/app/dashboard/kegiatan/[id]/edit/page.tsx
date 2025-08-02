@@ -19,7 +19,7 @@ import { FiCalendar, FiClock, FiMapPin, FiUsers, FiAlertCircle, FiArrowLeft } fr
 export default function EditEventPage() {
   const router = useRouter();
   const params = useParams();
-  const eventId = parseInt(params.id as string);
+  const eventId = params?.id ? parseInt(params.id as string) : null;
   const { user, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +61,12 @@ export default function EditEventPage() {
   }, [user, loading, router, eventId]);
 
   const fetchEventData = async () => {
+    if (!eventId) {
+      setError('ID kegiatan tidak valid');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       setIsLoading(true);
       const eventData = await eventApi.getEventById(eventId);
@@ -126,6 +132,11 @@ export default function EditEventPage() {
   };
 
   const onSubmit = async (data: EventFormData) => {
+    if (!eventId) {
+      setError('ID kegiatan tidak valid');
+      return;
+    }
+    
     try {
       setIsSubmitting(true);
       setError(null);
