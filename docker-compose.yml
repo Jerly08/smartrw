@@ -37,7 +37,7 @@ services:
       - PORT=${PORT}
       - NODE_ENV=${NODE_ENV}
       - UPLOAD_PATH=${UPLOAD_PATH}
-    command: sh -c "npx prisma migrate deploy && npm start"
+    command: sh /app/start.sh
     volumes:
       - backend_uploads:/app/uploads
       - ./logs:/app/logs

@@ -1,62 +1,45 @@
-# Backend Dockerfile
+# Use Node.js 18 Alpine as base image
+FROM node:18-alpine
 
-# ---- Base Stage ----
-FROM node:18-alpine AS base
+# Set working directory
 WORKDIR /app
 
-# Install OpenSSL and other required dependencies
-RUN apk add --no-cache openssl libc6-compat
-
+# Copy package files
 COPY package*.json ./
 
-# ---- Dependencies Stage ----
-FROM base AS dependencies
-RUN npm ci
+# Install dependencies
+RUN npm ci --only=production
 
-# ---- Build Stage ----
-FROM base AS build
-COPY --from=dependencies /app/node_modules ./node_modules
+# Copy Prisma schema and migrations
+COPY prisma ./prisma/
+
+# Copy source code
 COPY . .
+
 # Generate Prisma client
 RUN npx prisma generate
-# Build TypeScript
-RUN npm run build
 
-# ---- Production Stage ----
-FROM node:18-alpine AS production
-WORKDIR /app
+# Create a script to handle migrations
+RUN echo '#!/bin/sh' > /app/migrate.sh && \
+    echo 'set -e' >> /app/migrate.sh && \
+    echo 'echo "Checking migration status..."' >> /app/migrate.sh && \
+    echo 'npx prisma migrate resolve --applied 20250802044019_make_event_enddate_optional || true' >> /app/migrate.sh && \
+    echo 'echo "Running migrations..."' >> /app/migrate.sh && \
+    echo 'npx prisma migrate deploy' >> /app/migrate.sh && \
+    echo 'echo "Migrations completed successfully"' >> /app/migrate.sh && \
+    chmod +x /app/migrate.sh
 
-# Install OpenSSL and other required dependencies
-RUN apk add --no-cache openssl libc6-compat
+# Expose port
+EXPOSE 3000
 
-ENV NODE_ENV=production
-ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
+# Create startup script
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
+    echo 'echo "Starting migration process..."' >> /app/start.sh && \
+    echo '/app/migrate.sh' >> /app/start.sh && \
+    echo 'echo "Starting application..."' >> /app/start.sh && \
+    echo 'npm start' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
-# Install production dependencies and Prisma CLI
-COPY package*.json ./
-RUN npm ci --only=production && npm install prisma
-
-# Copy built application and Prisma files
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-
-# Generate Prisma client for production with explicit binary target
-RUN npx prisma generate --schema=./prisma/schema.prisma
-
-# Verify the engines are in place
-RUN ls -la node_modules/@prisma/engines/ || echo "Engines directory not found"
-RUN ls -la node_modules/.prisma/client/ || echo "Prisma client not found"
-
-# Create uploads directory with proper permissions
-RUN mkdir -p uploads/residents uploads/complaints uploads/documents uploads/events uploads/general
-RUN chown -R node:node uploads
-
-# Create volume mount point
-VOLUME ["/app/uploads"]
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1
-
-EXPOSE 4000
-CMD ["node", "dist/index.js"]
+# Start the application
+CMD ["/app/start.sh"]

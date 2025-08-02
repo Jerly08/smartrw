@@ -11,6 +11,26 @@ Created unverified resident in RT 002: dewi@example.com
 Seeding completed successfully!
 
 Login credentials:
+prod
+Admin
+Email:    admin@smartrw.com
+Password: SmartRW2024!Admin
+Role:     ADMIN
+RW
+Email: rw002@smartrw.com
+
+Password: RW002@2024
+
+Email: rw001@smartrw.com
+
+Password: RW001@2024
+
+RT
+📝 Informasi Login RT
+Email: rt001@smartrw.com
+
+Password: RT001@2024
+
 Admin: admin@smartrw.com / admin123456
 RW: rw@smartrw.com / rw123456
 RT 001: rt001@smartrw.com / rt123456
@@ -81,3 +101,6 @@ Warga akan berstatus “belum terverifikasi” sampai RT yang bersangkutan menye
 RT memiliki dashboard khusus yang hanya menampilkan daftar warga yang memilih RT tersebut.
 
 Pastikan alur ini terintegrasi dengan sistem autentikasi dan manajemen role yang sudah ada, sehingga hanya user dengan role "RT" dan wilayah yang sesuai yang bisa memverifikasi warga yang mendaftar.
+
+
+http://localhost:3000/dashboard/forum/1 di komentar tambahkan badge buat RT,RW agar ketahuan bahwa yang komentar RT wilayah tersebut
