@@ -297,6 +297,17 @@ export const createEventNotifications = async (
   createdByUserId: number
 ) => {
   try {
+    // Get the creator's role to determine notification scope
+    const creator = await prisma.user.findUnique({
+      where: { id: createdByUserId },
+      select: { role: true, resident: true },
+    });
+
+    if (!creator) {
+      console.error('Creator not found for event notification');
+      return;
+    }
+
     // Parse targetRTs if it exists
     let targetRTNumbers: string[] = [];
     if (event.targetRTs) {
@@ -307,32 +318,101 @@ export const createEventNotifications = async (
       }
     }
 
-    // If event is published, create notifications for users in the target RTs
-    if (event.isPublished && targetRTNumbers.length > 0) {
-      await notificationService.createNotificationForRT(
-        targetRTNumbers,
-        {
-          type: 'EVENT',
-          title: 'Kegiatan ' + event.category,
-          message: `${event.title} akan dilaksanakan pada ${new Date(event.startDate).toLocaleDateString('id-ID', { 
-            weekday: 'long', 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })}`,
-          priority: 'NORMAL',
-          eventId: event.id,
-    data: {
-            eventTitle: event.title,
-            eventDate: event.startDate,
-            eventLocation: event.location,
+    // If event is published, create notifications
+    if (event.isPublished) {
+      // For events created by ADMIN or RW, notify all users (including unverified warga)
+      if (creator.role === 'ADMIN' || creator.role === 'RW') {
+        // Get all users except the creator
+        const allUsers = await prisma.user.findMany({
+          where: {
+            id: { not: createdByUserId },
+            // Include all users regardless of verification status
           },
-          // Set expiration to event end date
-          expiresAt: event.endDate,
+          select: { id: true },
+        });
+
+        const userIds = allUsers.map(user => user.id);
+        
+        await notificationService.createNotificationForUsers(
+          userIds,
+          {
+            type: 'EVENT',
+            title: `Kegiatan ${event.category}`,
+            message: `${event.title} akan dilaksanakan pada ${new Date(event.startDate).toLocaleDateString('id-ID', { 
+              weekday: 'long', 
+              day: 'numeric', 
+              month: 'long', 
+              year: 'numeric' 
+            })} di ${event.location}`,
+            priority: 'HIGH', // High priority for RW/Admin events
+            eventId: event.id,
+            data: {
+              eventTitle: event.title,
+              eventDate: event.startDate,
+              eventLocation: event.location,
+              creatorRole: creator.role,
+            },
+            // Set expiration to event end date + 1 day for visibility
+            expiresAt: new Date(event.endDate.getTime() + 24 * 60 * 60 * 1000),
+          }
+        );
+      }
+      // For events created by RT, notify users in specific RTs (including unverified)
+      else if (creator.role === 'RT' && targetRTNumbers.length > 0) {
+        // Get all users in the target RTs (including unverified)
+        const residents = await prisma.resident.findMany({
+          where: {
+            rtNumber: {
+              in: targetRTNumbers,
+            },
+            // Include both verified and unverified residents
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        // Also include users who registered but don't have resident profile yet
+        const unregisteredUsers = await prisma.user.findMany({
+          where: {
+            id: { not: createdByUserId },
+            resident: null, // Users without resident profile
+            role: 'WARGA',
+          },
+          select: { id: true },
+        });
+
+        const userIds = [...residents.map(r => r.userId), ...unregisteredUsers.map(u => u.id)];
+        
+        if (userIds.length > 0) {
+          await notificationService.createNotificationForUsers(
+            userIds,
+            {
+              type: 'EVENT',
+              title: `Kegiatan RT ${targetRTNumbers.join(', ')}`,
+              message: `${event.title} akan dilaksanakan pada ${new Date(event.startDate).toLocaleDateString('id-ID', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+              })} di ${event.location}`,
+              priority: 'NORMAL',
+              eventId: event.id,
+              data: {
+                eventTitle: event.title,
+                eventDate: event.startDate,
+                eventLocation: event.location,
+                creatorRole: creator.role,
+                targetRTs: targetRTNumbers,
+              },
+              // Set expiration to event end date
+              expiresAt: event.endDate,
+            }
+          );
         }
-      );
+      }
     }
   } catch (error) {
     console.error('Error creating event notifications:', error);
   }
-}; 
+};

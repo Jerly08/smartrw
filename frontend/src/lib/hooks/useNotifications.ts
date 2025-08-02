@@ -139,16 +139,28 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
     }
   }, [user, fetchNotifications, fetchUnreadCount]);
 
-  // Set up polling for unread count
+  // Set up polling for unread count and notifications
   useEffect(() => {
     if (!user) return;
     
-    const interval = setInterval(() => {
+    // Poll more frequently for better real-time experience
+    const unreadCountInterval = setInterval(() => {
       fetchUnreadCount();
-    }, 60000); // Poll every minute
+    }, 30000); // Poll every 30 seconds for unread count
     
-    return () => clearInterval(interval);
-  }, [user, fetchUnreadCount]);
+    // Poll notifications less frequently to avoid too many API calls
+    const notificationsInterval = setInterval(() => {
+      // Only refetch notifications if on first page to avoid disrupting pagination
+      if (filters.page === 1) {
+        fetchNotifications();
+      }
+    }, 120000); // Poll every 2 minutes for new notifications
+    
+    return () => {
+      clearInterval(unreadCountInterval);
+      clearInterval(notificationsInterval);
+    };
+  }, [user, fetchUnreadCount, fetchNotifications, filters.page]);
 
   // Parse notification data
   const parseNotificationData = useCallback((notification: Notification) => {

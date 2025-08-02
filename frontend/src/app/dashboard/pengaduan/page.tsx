@@ -151,10 +151,12 @@ export default function ComplaintsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Pengaduan & Aspirasi Warga</h1>
         
-        {/* All users can create complaints */}
-        <Link href="/dashboard/pengaduan/buat" className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          <FiPlus className="mr-2" /> Buat Pengaduan Baru
-        </Link>
+        {/* Only non-RW users can create complaints */}
+        {!isRW && (
+          <Link href="/dashboard/pengaduan/buat" className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            <FiPlus className="mr-2" /> Buat Pengaduan Baru
+          </Link>
+        )}
       </div>
 
       {error && (
