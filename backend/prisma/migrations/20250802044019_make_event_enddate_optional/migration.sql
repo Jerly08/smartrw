@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `event` MODIFY `endDate` DATETIME(3) NULL;
+ALTER TABLE `Event` MODIFY `endDate` DATETIME(3) NULL;
