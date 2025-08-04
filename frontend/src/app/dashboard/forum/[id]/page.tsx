@@ -44,6 +44,8 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
     totalPages: 1,
     totalItems: 0,
   });
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editCommentContent, setEditCommentContent] = useState<string>('');
 
   const postId = parseInt(params.id);
   
@@ -162,6 +164,28 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
     } catch (error) {
       console.error('Error toggling comment like status:', error);
       setError('Gagal menyukai komentar');
+    }
+  };
+
+  const handleEditComment = (comment: ForumComment) => {
+    setEditingCommentId(comment.id);
+    setEditCommentContent(comment.content);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingCommentId) return;
+
+    try {
+      setIsSubmitting(true);
+      await forumApi.updateComment(postId, editingCommentId, { content: editCommentContent });
+      setEditingCommentId(null);
+      setEditCommentContent('');
+      fetchComments();
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      setError('Gagal memperbarui komentar');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -484,7 +508,37 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
               </div>
               
               <div className="mt-2 text-gray-700">
-                <p className="whitespace-pre-wrap">{comment.content}</p>
+                {editingCommentId === comment.id ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editCommentContent}
+                      onChange={(e) => setEditCommentContent(e.target.value)}
+                      rows={3}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleUpdateComment}
+                        disabled={isSubmitting}
+                        className="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        <FiSend className="mr-1" />
+                        {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingCommentId(null);
+                          setEditCommentContent('');
+                        }}
+                        className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{comment.content}</p>
+                )}
               </div>
               
               <div className="mt-4 flex items-center justify-between">
@@ -503,12 +557,24 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
                 </div>
                 
                 {canModerateComment(comment) && (
-                  <button
-                    onClick={() => handleDeleteComment(comment.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <FiTrash />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {editingCommentId !== comment.id && (
+                      <button
+                        onClick={() => handleEditComment(comment)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Edit komentar"
+                      >
+                        <FiEdit />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteComment(comment.id)}
+                      className="text-red-600 hover:text-red-800"
+                      title="Hapus komentar"
+                    >
+                      <FiTrash />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -924,6 +924,12 @@ export const forumApi = {
     return response.data.data;
   },
 
+  // Update comment
+  updateComment: async (postId: number, commentId: number, data: ForumCommentFormData) => {
+    const response = await api.put(`/forum/${postId}/comments/${commentId}`, data);
+    return response.data.data.comment;
+  },
+
   // Delete comment
   deleteComment: async (postId: number, commentId: number) => {
     const response = await api.delete(`/forum/${postId}/comments/${commentId}`);
