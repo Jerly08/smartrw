@@ -213,6 +213,11 @@ export const getForumComments = async (req: Request, res: Response, next: NextFu
             id: true,
             name: true,
             role: true,
+            resident: {
+              select: {
+                rtNumber: true,
+              },
+            },
           },
         },
         _count: {
@@ -222,12 +227,40 @@ export const getForumComments = async (req: Request, res: Response, next: NextFu
         },
       },
     });
+
+    // Add isEdited flag and userHasLiked for each comment
+    const commentsWithFlags = await Promise.all(
+      comments.map(async (comment) => {
+        // Check if comment has been edited (updatedAt different from createdAt)
+        const isEdited = comment.updatedAt.getTime() !== comment.createdAt.getTime();
+        
+        // Check if current user has liked this comment
+        let userHasLiked = false;
+        if (req.user) {
+          const userLike = await prisma.forumCommentLike.findUnique({
+            where: {
+              commentId_userId: {
+                commentId: comment.id,
+                userId: req.user.id,
+              },
+            },
+          });
+          userHasLiked = !!userLike;
+        }
+
+        return {
+          ...comment,
+          isEdited,
+          userHasLiked,
+        };
+      })
+    );
     
     res.status(200).json({
       status: 'success',
-      results: comments.length,
+      results: commentsWithFlags.length,
       data: {
-        comments,
+        comments: commentsWithFlags,
         pagination: {
           total,
           page: pageNum,
@@ -307,6 +340,12 @@ export const createForumComment = async (req: Request, res: Response, next: Next
 // Update comment
 export const updateForumComment = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('Update comment request:', {
+      params: req.params,
+      body: req.body,
+      user: req.user?.id
+    });
+    
     if (!req.user) {
       throw new ApiError('User not authenticated', 401);
     }
@@ -343,10 +382,13 @@ export const updateForumComment = async (req: Request, res: Response, next: Next
       throw new ApiError('You are not authorized to update this comment', 403);
     }
     
-    // Update comment
+    // Update comment and mark as edited
     const updatedComment = await prisma.forumComment.update({
       where: { id: commentId },
-      data: { content },
+      data: { 
+        content,
+        updatedAt: new Date() // Explicitly update the timestamp
+      },
       include: {
         author: {
           select: {

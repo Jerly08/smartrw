@@ -170,20 +170,63 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
   const handleEditComment = (comment: ForumComment) => {
     setEditingCommentId(comment.id);
     setEditCommentContent(comment.content);
+    setError(null); // Clear any existing errors
   };
 
   const handleUpdateComment = async () => {
-    if (!editingCommentId) return;
+    if (!editingCommentId) {
+      setError('ID komentar tidak valid');
+      return;
+    }
+
+    const trimmedContent = editCommentContent.trim();
+    if (!trimmedContent || trimmedContent.length === 0) {
+      setError('Komentar tidak boleh kosong');
+      return;
+    }
+
+    if (trimmedContent.length > 1000) {
+      setError('Komentar terlalu panjang (maksimal 1000 karakter)');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
-      await forumApi.updateComment(postId, editingCommentId, { content: editCommentContent });
+      setError(null);
+      
+      console.log('Updating comment:', {
+        postId,
+        commentId: editingCommentId,
+        content: trimmedContent
+      });
+      
+      const response = await forumApi.updateComment(postId, editingCommentId, { 
+        content: trimmedContent 
+      });
+      
+      console.log('Update comment response:', response);
+      
+      // Reset editing state
       setEditingCommentId(null);
       setEditCommentContent('');
-      fetchComments();
-    } catch (error) {
+      
+      // Refresh comments
+      await fetchComments();
+      
+    } catch (error: any) {
       console.error('Error updating comment:', error);
-      setError('Gagal memperbarui komentar');
+      
+      let errorMessage = 'Gagal memperbarui komentar';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -504,7 +547,12 @@ export default function ForumPostDetailPage({ params }: { params: { id: string }
                     </span>
                   ) : null}
                 </div>
-                <div className="text-sm text-gray-500">{formatDate(comment.createdAt)}</div>
+                <div className="text-sm text-gray-500">
+                  {formatDate(comment.createdAt)}
+                  {comment.isEdited && (
+                    <span className="ml-2 text-xs text-gray-400">(diedit)</span>
+                  )}
+                </div>
               </div>
               
               <div className="mt-2 text-gray-700">

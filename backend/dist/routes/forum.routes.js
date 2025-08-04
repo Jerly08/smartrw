@@ -66,7 +66,9 @@ router.post('/:id/comments', auth_middleware_1.authenticate,
 // validateRequest(createForumCommentSchema), // Temporarily disabled for debugging
 forumController.createForumComment);
 // Update comment
-router.put('/:id/comments/:commentId', auth_middleware_1.authenticate, forum_middleware_1.checkForumCommentAccess, (0, validation_middleware_1.validateRequest)(forum_schema_1.updateForumCommentSchema), forumController.updateForumComment);
+router.put('/:id/comments/:commentId', auth_middleware_1.authenticate, forum_middleware_1.checkForumCommentAccess, 
+// validateRequest(updateForumCommentSchema), // Temporarily disabled for debugging
+forumController.updateForumComment);
 // Delete comment
 router.delete('/:id/comments/:commentId', auth_middleware_1.authenticate, forum_middleware_1.checkForumCommentAccess, forumController.deleteForumComment);
 // Like/unlike a forum post

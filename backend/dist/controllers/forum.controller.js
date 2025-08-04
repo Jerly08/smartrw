@@ -306,7 +306,13 @@ const createForumComment = (req, res, next) => __awaiter(void 0, void 0, void 0,
 exports.createForumComment = createForumComment;
 // Update comment
 const updateForumComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
+        console.log('Update comment request:', {
+            params: req.params,
+            body: req.body,
+            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id
+        });
         if (!req.user) {
             throw new error_middleware_1.ApiError('User not authenticated', 401);
         }

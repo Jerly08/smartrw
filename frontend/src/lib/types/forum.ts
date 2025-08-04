@@ -43,6 +43,7 @@ export interface ForumComment {
     likes: number;
   };
   userHasLiked?: boolean;
+  isEdited?: boolean;
 }
 
 // Forum like interface

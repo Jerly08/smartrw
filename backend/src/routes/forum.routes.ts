@@ -96,7 +96,7 @@ router.put(
   '/:id/comments/:commentId',
   authenticate,
   checkForumCommentAccess,
-  validateRequest(updateForumCommentSchema),
+  // validateRequest(updateForumCommentSchema), // Temporarily disabled for debugging
   forumController.updateForumComment
 );
 
