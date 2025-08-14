@@ -267,7 +267,7 @@ export const markNotificationAsRead = async (notificationId: number, userId: num
     });
 
     if (!notification) {
-      throw new ApiError('Notification not found', 404);
+      throw new ApiError('Notifikasi tidak ditemukan', 404);
     }
 
     return await prisma.notification.update({
@@ -304,7 +304,7 @@ export const deleteNotification = async (notificationId: number, userId: number)
     });
 
     if (!notification) {
-      throw new ApiError('Notification not found', 404);
+      throw new ApiError('Notifikasi tidak ditemukan', 404);
     }
 
     return await prisma.notification.delete({

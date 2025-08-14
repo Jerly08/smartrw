@@ -341,7 +341,7 @@ export default function NotificationsPage() {
         </div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-          <h3 className="text-lg font-medium">Error</h3>
+          <h3 className="text-lg font-medium">Kesalahan</h3>
           <p>{error}</p>
           <button 
             onClick={() => fetchNotifications()}
@@ -476,7 +476,7 @@ export default function NotificationsPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              First
+              Pertama
             </button>
             
             <button
@@ -488,7 +488,7 @@ export default function NotificationsPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Prev
+              Sebelumnya
             </button>
             
             {[...Array(pagination.totalPages)].map((_, i) => (
@@ -514,7 +514,7 @@ export default function NotificationsPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Next
+              Selanjutnya
             </button>
             
             <button
@@ -526,7 +526,7 @@ export default function NotificationsPage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Last
+              Terakhir
             </button>
           </div>
         </div>

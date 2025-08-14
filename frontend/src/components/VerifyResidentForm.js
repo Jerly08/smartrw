@@ -33,10 +33,10 @@ const VerifyResidentForm = () => {
         const data = await response.json();
         setRts(data.data.rts);
       } else {
-        console.error('Failed to fetch RTs');
+        console.error('Gagal mengambil data RT');
       }
     } catch (error) {
-      console.error('Error fetching RTs:', error);
+      console.error('Kesalahan saat mengambil data RT:', error);
     } finally {
       setLoadingRTs(false);
     }
@@ -117,7 +117,7 @@ const VerifyResidentForm = () => {
         alert(data.message || 'Verifikasi gagal');
       }
     } catch (error) {
-      console.error('Error during verification:', error);
+      console.error('Kesalahan saat verifikasi:', error);
       alert('Terjadi kesalahan saat verifikasi');
     } finally {
       setLoading(false);

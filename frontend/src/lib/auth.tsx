@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('User profile fetched:', userData);
         setUser(userData);
       } catch (err) {
-        console.error('Failed to fetch user profile:', err);
+        console.error('Gagal mengambil profil pengguna:', err);
         localStorage.removeItem('token');
       } finally {
         setLoading(false);
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth harus digunakan dalam AuthProvider');
   }
   return context;
 } 

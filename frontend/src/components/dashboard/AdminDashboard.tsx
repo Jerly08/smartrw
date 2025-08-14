@@ -171,12 +171,12 @@ export default function AdminDashboard() {
           const activitiesResponse = await api.get('/admin/activities/recent');
           setRecentActivities(activitiesResponse.data?.data || []);
         } catch (err) {
-          console.error('Failed to fetch recent activities:', err);
+          console.error('Gagal mengambil aktivitas terbaru:', err);
           setRecentActivities([]);
         }
 
       } catch (error) {
-        console.error('Failed to fetch admin dashboard data:', error);
+        console.error('Gagal mengambil data dashboard admin:', error);
         setStats(defaultAdminStats);
       } finally {
         setLoading(false);

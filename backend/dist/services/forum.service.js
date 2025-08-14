@@ -160,31 +160,48 @@ const createPost = (data, authorId) => __awaiter(void 0, void 0, void 0, functio
             },
         },
     });
-    // If this is an announcement, create notifications for users
+    // If this is an announcement, create notifications for users based on author role
     if (data.category === 'PENGUMUMAN') {
-        // Get all users except the author
+        // Get the author's role to determine notification scope and priority
+        const isHighPriorityRole = author.role === 'ADMIN' || author.role === 'RW';
+        // Get all users except the author (including unverified warga)
         const users = yield prisma.user.findMany({
             where: {
                 id: { not: authorId },
+                // Include all users regardless of verification status
             },
             select: {
                 id: true,
             },
         });
         const userIds = users.map(user => user.id);
+        // Create appropriate notification title based on author role
+        let notificationTitle = 'Pengumuman Forum';
+        if (author.role === 'ADMIN') {
+            notificationTitle = 'Pengumuman Admin';
+        }
+        else if (author.role === 'RW') {
+            notificationTitle = 'Pengumuman Ketua RW';
+        }
+        else if (author.role === 'RT') {
+            notificationTitle = 'Pengumuman RT';
+        }
         // Create notification for all users
         yield notificationService.createNotificationForUsers(userIds, {
-            type: 'FORUM',
-            title: 'Pengumuman RW',
+            type: 'ANNOUNCEMENT', // Use ANNOUNCEMENT type for better categorization
+            title: notificationTitle,
             message: data.title,
-            priority: data.isPinned ? 'HIGH' : 'NORMAL',
+            priority: isHighPriorityRole || data.isPinned ? 'HIGH' : 'NORMAL',
             forumPostId: post.id,
             data: {
                 postTitle: data.title,
                 postCategory: data.category,
                 authorName: post.author.name,
                 authorRole: post.author.role,
+                isPinned: data.isPinned,
             },
+            // Set expiration for announcements (30 days for high priority, 7 days for normal)
+            expiresAt: new Date(Date.now() + (isHighPriorityRole ? 30 : 7) * 24 * 60 * 60 * 1000),
         });
     }
     return post;

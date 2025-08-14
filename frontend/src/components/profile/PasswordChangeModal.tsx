@@ -51,7 +51,7 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
         toast.error(response.message || 'Gagal mengubah password');
       }
     } catch (error: any) {
-      console.error('Failed to change password:', error);
+      console.error('Gagal mengubah password:', error);
       toast.error(error.response?.data?.message || 'Gagal mengubah password');
     } finally {
       setIsLoading(false);

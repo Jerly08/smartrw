@@ -133,17 +133,23 @@ const createEvent = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         }
         const { title, description, location, startDate, endDate, category, isPublished, targetRTs } = req.body;
         // Validate required fields
-        if (!title || !description || !location || !startDate || !endDate || !category) {
+        if (!title || !description || !location || !startDate || !category) {
             throw new error_middleware_1.ApiError('Missing required fields', 400);
         }
         // Convert date strings to Date objects
         const startDateTime = new Date(startDate);
-        const endDateTime = new Date(endDate);
-        if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-            throw new error_middleware_1.ApiError('Invalid date format', 400);
+        if (isNaN(startDateTime.getTime())) {
+            throw new error_middleware_1.ApiError('Invalid start date format', 400);
         }
-        if (startDateTime >= endDateTime) {
-            throw new error_middleware_1.ApiError('End date must be after start date', 400);
+        let endDateTime;
+        if (endDate && endDate.trim() !== '') {
+            endDateTime = new Date(endDate);
+            if (isNaN(endDateTime.getTime())) {
+                throw new error_middleware_1.ApiError('Invalid end date format', 400);
+            }
+            if (startDateTime >= endDateTime) {
+                throw new error_middleware_1.ApiError('End date must be after start date', 400);
+            }
         }
         // Process targetRTs - convert array to JSON string
         let targetRTsJson = undefined;
@@ -206,11 +212,16 @@ const updateEvent = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
             eventData.startDate = startDateTime;
         }
         if (endDate !== undefined) {
-            const endDateTime = new Date(endDate);
-            if (isNaN(endDateTime.getTime())) {
-                throw new error_middleware_1.ApiError('Invalid end date format', 400);
+            if (endDate === '' || endDate === null) {
+                eventData.endDate = null;
             }
-            eventData.endDate = endDateTime;
+            else {
+                const endDateTime = new Date(endDate);
+                if (isNaN(endDateTime.getTime())) {
+                    throw new error_middleware_1.ApiError('Invalid end date format', 400);
+                }
+                eventData.endDate = endDateTime;
+            }
         }
         // Validate dates if both are provided
         if (eventData.startDate && eventData.endDate && eventData.startDate >= eventData.endDate) {

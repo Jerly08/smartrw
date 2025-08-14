@@ -106,7 +106,7 @@ export default function RWDashboard() {
         setUpcomingEvents(eventsResponse);
         setRecentDocuments(documentsResponse);
       } catch (error) {
-        console.error('Failed to fetch RW dashboard data:', error);
+        console.error('Gagal mengambil data dashboard RW:', error);
         setError('Gagal memuat data dashboard. Silakan coba lagi.');
       } finally {
         setLoading(false);
@@ -127,7 +127,7 @@ export default function RWDashboard() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-6">
-        <h3 className="text-lg font-medium mb-2">Error</h3>
+        <h3 className="text-lg font-medium mb-2">Kesalahan</h3>
         <p>{error}</p>
         <button 
           onClick={() => window.location.reload()}

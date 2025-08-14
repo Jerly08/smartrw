@@ -32,8 +32,8 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
       setError(null);
     } catch (err) {
       console.error('Error fetching notifications:', err);
-      setError('Failed to load notifications');
-      toast.error('Failed to load notifications');
+      setError('Gagal memuat notifikasi');
+      toast.error('Gagal memuat notifikasi');
     } finally {
       setLoading(false);
     }
@@ -68,7 +68,7 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
       return success;
     } catch (err) {
       console.error('Error marking notification as read:', err);
-      toast.error('Failed to mark notification as read');
+      toast.error('Gagal menandai notifikasi sebagai dibaca');
       return false;
     }
   }, [user]);
@@ -84,12 +84,12 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
           prev.map(notification => ({ ...notification, isRead: true }))
         );
         setUnreadCount(0);
-        toast.success('All notifications marked as read');
+        toast.success('Semua notifikasi ditandai sebagai dibaca');
       }
       return success;
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
-      toast.error('Failed to mark all notifications as read');
+      toast.error('Gagal menandai semua notifikasi sebagai dibaca');
       return false;
     }
   }, [user]);
@@ -107,12 +107,12 @@ export const useNotifications = (initialFilters: NotificationFilter = {}) => {
         if (wasUnread) {
           setUnreadCount(prev => Math.max(0, prev - 1));
         }
-        toast.success('Notification deleted');
+        toast.success('Notifikasi dihapus');
       }
       return success;
     } catch (err) {
       console.error('Error deleting notification:', err);
-      toast.error('Failed to delete notification');
+      toast.error('Gagal menghapus notifikasi');
       return false;
     }
   }, [user, notifications]);

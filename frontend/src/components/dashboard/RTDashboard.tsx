@@ -77,7 +77,7 @@ export default function RTDashboard() {
         const eventsData = await dashboardApi.getRTUpcomingEvents({ limit: 5 });
         setUpcomingEvents(eventsData.events);
       } catch (err) {
-        console.error('Failed to fetch RT dashboard data:', err);
+        console.error('Gagal mengambil data dashboard RT:', err);
         setError('Gagal memuat data dashboard. Silakan coba lagi nanti.');
       } finally {
         setLoading(false);
@@ -100,7 +100,7 @@ export default function RTDashboard() {
       const statsData = await dashboardApi.getRTDashboardStats();
       setStats(statsData);
     } catch (err) {
-      console.error('Failed to process verification:', err);
+      console.error('Gagal memproses verifikasi:', err);
       setError('Gagal memproses verifikasi. Silakan coba lagi nanti.');
     }
   };
@@ -118,7 +118,7 @@ export default function RTDashboard() {
       const statsData = await dashboardApi.getRTDashboardStats();
       setStats(statsData);
     } catch (err) {
-      console.error('Failed to process document recommendation:', err);
+      console.error('Gagal memproses rekomendasi dokumen:', err);
       setError('Gagal memproses rekomendasi dokumen. Silakan coba lagi nanti.');
     }
   };
@@ -142,7 +142,7 @@ export default function RTDashboard() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-        <h3 className="text-lg font-medium">Error</h3>
+        <h3 className="text-lg font-medium">Kesalahan</h3>
         <p>{error}</p>
         <button 
           onClick={() => window.location.reload()}

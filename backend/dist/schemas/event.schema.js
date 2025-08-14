@@ -26,7 +26,7 @@ const eventBaseSchema = {
     startDate: zod_1.z.string().refine((val) => !isNaN(Date.parse(val)), {
         message: 'Start date must be a valid date',
     }),
-    endDate: zod_1.z.string().refine((val) => !isNaN(Date.parse(val)), {
+    endDate: zod_1.z.string().optional().refine((val) => !val || !isNaN(Date.parse(val)), {
         message: 'End date must be a valid date',
     }),
     category: zod_1.z.enum(eventCategories),
@@ -35,6 +35,8 @@ const eventBaseSchema = {
 };
 // Create event schema
 exports.createEventSchema = zod_1.z.object(eventBaseSchema).refine((data) => {
+    if (!data.endDate)
+        return true; // If no endDate provided, skip validation
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
     return startDate <= endDate;

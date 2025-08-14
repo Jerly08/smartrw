@@ -38,6 +38,15 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Add static file serving for uploads
 app.use('/api/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        service: 'smart-rw-backend',
+        version: '1.0.0'
+    });
+});
 // API routes
 app.use('/api/auth', auth_routes_1.default);
 app.use('/api/users', user_routes_1.default);

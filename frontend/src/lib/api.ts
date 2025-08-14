@@ -65,7 +65,7 @@ api.interceptors.response.use(
   (error) => {
     // Check if the error is a connection error
     if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
-      console.warn('API connection error. Using mock data if available.');
+      console.warn('Kesalahan koneksi API. Menggunakan data simulasi jika tersedia.');
       // Return a resolved promise with mock data
       return Promise.resolve({ data: { status: 'success', data: {} } });
     }
@@ -951,7 +951,7 @@ export const notificationApi = {
       const response = await api.get('/notifications', { params });
       return response.data.data as NotificationResponse;
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('Kesalahan mengambil notifikasi:', error);
       // Return empty result on error
       return {
         notifications: [],
@@ -971,7 +971,7 @@ export const notificationApi = {
       const response = await api.get('/notifications/unread/count');
       return response.data.data.count;
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      console.error('Kesalahan mengambil jumlah yang belum dibaca:', error);
       return 0;
     }
   },
@@ -982,7 +982,7 @@ export const notificationApi = {
       const response = await api.patch(`/notifications/${id}/read`);
       return response.data.status === 'success';
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Kesalahan menandai notifikasi sebagai dibaca:', error);
       return false;
     }
   },
@@ -993,7 +993,7 @@ export const notificationApi = {
       const response = await api.patch('/notifications/read-all');
       return response.data.status === 'success';
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('Kesalahan menandai semua notifikasi sebagai dibaca:', error);
       return false;
     }
   },
@@ -1004,7 +1004,7 @@ export const notificationApi = {
       const response = await api.delete(`/notifications/${id}`);
       return response.data.status === 'success';
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error('Kesalahan menghapus notifikasi:', error);
       return false;
     }
   }
@@ -1018,7 +1018,7 @@ export const dashboardApi = {
       const response = await api.get('/rt/dashboard/stats');
       return response.data.data as RTDashboardStats;
     } catch (error) {
-      console.error('Error fetching RT dashboard stats:', error);
+      console.error('Kesalahan mengambil statistik dashboard RT:', error);
       throw error;
     }
   },
@@ -1032,7 +1032,7 @@ export const dashboardApi = {
         pagination: { page: number, limit: number, total: number, totalPages: number }
       };
     } catch (error) {
-      console.error('Error fetching pending verifications:', error);
+      console.error('Kesalahan mengambil verifikasi yang tertunda:', error);
       throw error;
     }
   },
@@ -1046,7 +1046,7 @@ export const dashboardApi = {
         pagination: { page: number, limit: number, total: number, totalPages: number }
       };
     } catch (error) {
-      console.error('Error fetching pending documents:', error);
+      console.error('Kesalahan mengambil dokumen yang tertunda:', error);
       throw error;
     }
   },
@@ -1060,7 +1060,7 @@ export const dashboardApi = {
         pagination: { page: number, limit: number, total: number, totalPages: number }
       };
     } catch (error) {
-      console.error('Error fetching upcoming events:', error);
+      console.error('Kesalahan mengambil kegiatan yang akan datang:', error);
       throw error;
     }
   },
@@ -1093,7 +1093,7 @@ export const dashboardApi = {
       const response = await api.get('/rw/dashboard/stats');
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching RW dashboard stats:', error);
+      console.error('Kesalahan mengambil statistik dashboard RW:', error);
       throw error;
     }
   },
@@ -1106,7 +1106,7 @@ export const dashboardApi = {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching RW recent documents:', error);
+      console.error('Kesalahan mengambil dokumen terbaru RW:', error);
       throw error;
     }
   },
@@ -1119,7 +1119,7 @@ export const dashboardApi = {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching RW upcoming events:', error);
+      console.error('Kesalahan mengambil kegiatan mendatang RW:', error);
       throw error;
     }
   },
