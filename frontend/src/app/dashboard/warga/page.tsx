@@ -400,25 +400,25 @@ const RTManagement = ({ onClose }: { onClose: () => void }) => {
               }
               return JSON.stringify(err);
             }).join('\n');
-            errorMessage = `Validation errors:\n${validationErrors}`;
+            errorMessage = `Error validasi:\n${validationErrors}`;
           } else if (error.response.data.issues) {
             // Zod validation errors
             const issues = error.response.data.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join('\n');
-            errorMessage = `Validation errors:\n${issues}`;
+            errorMessage = `Error validasi:\n${issues}`;
           }
         } else if (error.response.status === 401) {
-          errorMessage = 'Unauthorized: Please check your login credentials';
+          errorMessage = 'Tidak diizinkan: Silakan periksa kredensial login Anda';
         } else if (error.response.status === 403) {
-          errorMessage = 'Forbidden: You do not have permission to perform this action';
+          errorMessage = 'Dilarang: Anda tidak memiliki izin untuk melakukan tindakan ini';
         }
       } else if (error.request) {
         // The request was made but no response was received
         console.error('Error request:', error.request);
-        errorMessage = 'Network error: No response from server';
+        errorMessage = 'Error jaringan: Tidak ada respons dari server';
       } else {
         // Something happened in setting up the request that triggered an Error
         console.error('Error message:', error.message);
-        errorMessage = `Request error: ${error.message}`;
+        errorMessage = `Error permintaan: ${error.message}`;
       }
       
       toast.error(errorMessage);
@@ -678,11 +678,11 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
           <SelectTrigger className={`w-full ${
             errors.kelurahanId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
           }`}>
-            <SelectValue placeholder={isLoadingKelurahan ? "Loading..." : "Pilih Kelurahan"} />
+            <SelectValue placeholder={isLoadingKelurahan ? "Memuat..." : "Pilih Kelurahan"} />
           </SelectTrigger>
           <SelectContent>
             {isLoadingKelurahan ? (
-              <SelectItem value="0" disabled>Loading kelurahan...</SelectItem>
+              <SelectItem value="0" disabled>Memuat kelurahan...</SelectItem>
             ) : kelurahanList.length > 0 ? (
               kelurahanList.map(kelurahan => (
                 <SelectItem key={kelurahan.id} value={kelurahan.id.toString()}>
@@ -2088,7 +2088,7 @@ export default function WargaManagementPage() {
             variant="outline"
             onClick={() => window.open(doc.fileUrl, '_blank')}
           >
-            Download File
+            Unduh File
           </Button>
         </div>
       );
