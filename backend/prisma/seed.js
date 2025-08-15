@@ -28,24 +28,48 @@ async function main() {
   await prisma.user.deleteMany().catch(e => console.log('Skipping User...'));
   await prisma.family.deleteMany().catch(e => console.log('Skipping Family...'));
   await prisma.rT.deleteMany().catch(e => console.log('Skipping RT...'));
+  await prisma.kelurahan.deleteMany().catch(e => console.log('Skipping Kelurahan...'));
+  await prisma.kecamatan.deleteMany().catch(e => console.log('Skipping Kecamatan...'));
   await prisma.socialAssistance.deleteMany().catch(e => console.log('Skipping SocialAssistance...'));
 
-  // Create RT entries first
+  // Create Kecamatan and Kelurahan first
+  const kecamatan1 = await prisma.kecamatan.create({
+    data: {
+      kode: '3201',
+      nama: 'Kecamatan Contoh'
+    }
+  });
+  console.log('Created Kecamatan:', kecamatan1.nama);
+
+  const kelurahan1 = await prisma.kelurahan.create({
+    data: {
+      kode: '3201001',
+      nama: 'Kelurahan Contoh',
+      kecamatanId: kecamatan1.id
+    }
+  });
+  console.log('Created Kelurahan:', kelurahan1.nama);
+
+  // Create RT entries with kecamatan and kelurahan references
   const rt1 = await prisma.rT.create({
     data: {
-      number: '001',
+      number: '01',
       chairperson: 'Ketua RT 001',
       email: 'rt001@smartrw.com',
       isActive: true,
+      kecamatanId: kecamatan1.id,
+      kelurahanId: kelurahan1.id,
     }
   });
 
   const rt2 = await prisma.rT.create({
     data: {
-      number: '002',
+      number: '02',
       chairperson: 'Ketua RT 002',
       email: 'rt002@smartrw.com',
       isActive: true,
+      kecamatanId: kecamatan1.id,
+      kelurahanId: kelurahan1.id,
     }
   });
 
@@ -53,9 +77,9 @@ async function main() {
   const family1 = await prisma.family.create({
     data: {
       noKK: '3201012501230001',
-      address: 'Jl. Merdeka No. 123, RT 001/RW 002',
-      rtNumber: '001',
-      rwNumber: '002',
+      address: 'Jl. Merdeka No. 123, RT 01/RW 02',
+      rtNumber: '01',
+      rwNumber: '02',
       rtId: rt1.id,
     }
   });
@@ -63,9 +87,9 @@ async function main() {
   const family2 = await prisma.family.create({
     data: {
       noKK: '3201012501230002',
-      address: 'Jl. Merdeka No. 456, RT 001/RW 002',
-      rtNumber: '001',
-      rwNumber: '002',
+      address: 'Jl. Merdeka No. 456, RT 01/RW 02',
+      rtNumber: '01',
+      rwNumber: '02',
       rtId: rt1.id,
     }
   });
@@ -73,9 +97,9 @@ async function main() {
   const family3 = await prisma.family.create({
     data: {
       noKK: '3201012501230003',
-      address: 'Jl. Pahlawan No. 789, RT 002/RW 002',
-      rtNumber: '002',
-      rwNumber: '002',
+      address: 'Jl. Pahlawan No. 789, RT 02/RW 02',
+      rtNumber: '02',
+      rwNumber: '02',
       rtId: rt2.id,
     }
   });
@@ -149,8 +173,8 @@ async function main() {
           birthPlace: 'Bandung',
           birthDate: new Date('1980-05-15'),
           address: family2.address,
-          rtNumber: '001',
-          rwNumber: '002',
+          rtNumber: '01',
+          rwNumber: '02',
           religion: 'ISLAM',
           maritalStatus: 'KAWIN',
           occupation: 'Guru',
@@ -192,8 +216,8 @@ async function main() {
           birthPlace: 'Surabaya',
           birthDate: new Date('1982-06-20'),
           address: family3.address,
-          rtNumber: '002',
-          rwNumber: '002',
+          rtNumber: '02',
+          rwNumber: '02',
           religion: 'ISLAM',
           maritalStatus: 'KAWIN',
           occupation: 'Wiraswasta',
@@ -236,8 +260,8 @@ async function main() {
           birthPlace: 'Jakarta',
           birthDate: new Date('1985-07-31'),
           address: family2.address,
-          rtNumber: '001',
-          rwNumber: '002',
+          rtNumber: '01',
+          rwNumber: '02',
           religion: 'ISLAM',
           maritalStatus: 'KAWIN',
           occupation: 'Ibu Rumah Tangga',
@@ -272,8 +296,8 @@ async function main() {
           birthPlace: 'Bandung',
           birthDate: new Date('1983-08-12'),
           address: family3.address,
-          rtNumber: '002',
-          rwNumber: '002',
+          rtNumber: '02',
+          rwNumber: '02',
           religion: 'ISLAM',
           maritalStatus: 'KAWIN',
           occupation: 'Pegawai Swasta',

@@ -134,19 +134,48 @@ enum FamilyRole {
 }
 
 // Family model to group residents by family
+// Kecamatan model for district management
+model Kecamatan {
+  id          Int         @id @default(autoincrement())
+  kode        String      @unique // District code
+  nama        String      // District name
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  kelurahans  Kelurahan[] // One-to-many relation with Kelurahan
+  rts         RT[]        // One-to-many relation with RT
+}
+
+// Kelurahan model for sub-district management
+model Kelurahan {
+  id          Int       @id @default(autoincrement())
+  kode        String    @unique // Sub-district code
+  nama        String    // Sub-district name
+  kecamatanId Int       // Foreign key to Kecamatan
+  kecamatan   Kecamatan @relation(fields: [kecamatanId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  rts         RT[]      // One-to-many relation with RT
+}
+
 // RT model for managing RT areas
 model RT {
   id          Int        @id @default(autoincrement())
-  number      String     @unique // RT Number (e.g., "001")
-  name        String? // Optional RT name
+  number      String     @unique // RT Number (e.g., "01") - Changed to 2 digits
+  name        String?    // Optional RT name
   description String?    @db.Text
-  address     String? // RT area address
-  chairperson String? // Name of RT chairperson
-  phoneNumber String? // Contact number
-  email       String? // Contact email
+  address     String?    // RT area address
+  chairperson String?    // Name of RT chairperson
+  phoneNumber String?    // Contact number
+  email       String?    // Contact email
   isActive    Boolean    @default(true)
   userId      Int?       @unique // Foreign key to User (RT account)
   user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kecamatanId Int        // Foreign key to Kecamatan (required)
+  kecamatan   Kecamatan  @relation(fields: [kecamatanId], references: [id])
+  kelurahanId Int        // Foreign key to Kelurahan (required)
+  kelurahan   Kelurahan  @relation(fields: [kelurahanId], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   residents   Resident[] // One-to-many relation with Resident

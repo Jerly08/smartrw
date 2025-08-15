@@ -46,7 +46,7 @@ const NavItem = ({ href, icon, label, active, role, badge }: NavItemProps) => {
       <div className="flex items-center">
         <span className="mr-3 text-lg relative">
           {icon}
-          {badge && badge > 0 && (
+          {badge !== undefined && badge > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
               {badge > 9 ? '9+' : badge}
             </span>
@@ -95,7 +95,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             icon={<FiBell />} 
             label="Notifikasi" 
             active={pathname?.startsWith('/dashboard/notifikasi') || false}
-            badge={unreadCount}
+            badge={unreadCount > 0 ? unreadCount : undefined}
           />
           
           {(isAdmin || isRW || isRT) && (

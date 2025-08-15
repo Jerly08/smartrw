@@ -4,8 +4,8 @@ import { z } from 'zod';
 export const createRTSchema = z.object({
   number: z.string({
     required_error: 'RT number is required',
-  }).regex(/^[0-9]{3}$/, {
-    message: 'RT number must be 3 digits (e.g., "001")',
+  }).regex(/^[0-9]{2}$/, {
+    message: 'RT number must be 2 digits (e.g., "01")',
   }),
   name: z.string({
     invalid_type_error: 'RT name must be a string',
@@ -46,14 +46,22 @@ export const createRTSchema = z.object({
   isActive: z.boolean({
     invalid_type_error: 'isActive must be a boolean',
   }).optional().default(true),
+  kecamatanId: z.number({
+    required_error: 'Kecamatan is required',
+    invalid_type_error: 'Kecamatan ID must be a number',
+  }),
+  kelurahanId: z.number({
+    required_error: 'Kelurahan is required',
+    invalid_type_error: 'Kelurahan ID must be a number',
+  }),
 });
 
 // Update RT schema
 export const updateRTSchema = z.object({
   number: z.string({
     invalid_type_error: 'RT number must be a string',
-  }).regex(/^[0-9]{3}$/, {
-    message: 'RT number must be 3 digits (e.g., "001")',
+  }).regex(/^[0-9]{2}$/, {
+    message: 'RT number must be 2 digits (e.g., "01")',
   }).optional(),
   name: z.string({
     invalid_type_error: 'RT name must be a string',
@@ -93,6 +101,12 @@ export const updateRTSchema = z.object({
   }).nullable().optional(),
   isActive: z.boolean({
     invalid_type_error: 'isActive must be a boolean',
+  }).optional(),
+  kecamatanId: z.number({
+    invalid_type_error: 'Kecamatan ID must be a number',
+  }).optional(),
+  kelurahanId: z.number({
+    invalid_type_error: 'Kelurahan ID must be a number',
   }).optional(),
 }).refine((data) => {
   // Ensure at least one field is provided for update

@@ -31,6 +31,8 @@ interface CreateRTData {
   phoneNumber?: string;
   email?: string;
   isActive?: boolean;
+  kecamatanId: number;
+  kelurahanId: number;
 }
 
 interface UpdateRTData {
@@ -42,6 +44,8 @@ interface UpdateRTData {
   phoneNumber?: string;
   email?: string;
   isActive?: boolean;
+  kecamatanId?: number;
+  kelurahanId?: number;
 }
 
 // Get all RTs
@@ -113,6 +117,18 @@ export const getAllRTs = async (filters: RTFilters, userContext: UserContext) =>
           families: true,
         },
       },
+      kecamatan: {
+        select: {
+          id: true,
+          nama: true,
+        },
+      },
+      kelurahan: {
+        select: {
+          id: true,
+          nama: true,
+        },
+      },
     },
     orderBy: {
       number: 'asc',
@@ -137,6 +153,18 @@ export const getRTById = async (rtId: number, userContext: UserContext) => {
           families: true,
         },
       },
+      kecamatan: {
+        select: {
+          id: true,
+          nama: true,
+        },
+      },
+      kelurahan: {
+        select: {
+          id: true,
+          nama: true,
+        },
+      },
     },
   });
 
@@ -158,6 +186,18 @@ export const getRTByNumber = async (number: string, userContext: UserContext) =>
           families: true,
         },
       },
+      kecamatan: {
+        select: {
+          id: true,
+          nama: true,
+        },
+      },
+      kelurahan: {
+        select: {
+          id: true,
+          nama: true,
+        },
+      },
     },
   });
 
@@ -173,6 +213,29 @@ export const createRT = async (rtData: CreateRTData, userContext: UserContext) =
   // Check if user has permission
   if (!['RW', 'ADMIN'].includes(userContext.role)) {
     throw new ApiError('Insufficient permissions', 403);
+  }
+
+  // Validate kecamatan exists
+  const kecamatan = await prisma.kecamatan.findFirst({
+    where: { 
+      id: rtData.kecamatanId, 
+      isActive: true 
+    },
+  });
+  if (!kecamatan) {
+    throw new ApiError('Kecamatan not found', 404);
+  }
+
+  // Validate kelurahan exists and belongs to the kecamatan
+  const kelurahan = await prisma.kelurahan.findFirst({
+    where: { 
+      id: rtData.kelurahanId,
+      kecamatanId: rtData.kecamatanId,
+      isActive: true
+    },
+  });
+  if (!kelurahan) {
+    throw new ApiError('Kelurahan not found or does not belong to the specified Kecamatan', 404);
   }
 
   // Get RW number from logged-in RW user's resident profile
@@ -237,6 +300,8 @@ export const createRT = async (rtData: CreateRTData, userContext: UserContext) =
         email: rtData.email,
         isActive: rtData.isActive ?? true,
         userId: rtUser.id,
+        kecamatanId: rtData.kecamatanId,
+        kelurahanId: rtData.kelurahanId,
       },
       include: {
         user: {
@@ -306,6 +371,34 @@ export const updateRT = async (rtId: number, rtData: UpdateRTData, userContext: 
     throw new ApiError('RT not found', 404);
   }
 
+  // Validate kecamatan if provided
+  if (rtData.kecamatanId) {
+    const kecamatan = await prisma.kecamatan.findFirst({
+      where: { 
+        id: rtData.kecamatanId, 
+        isActive: true 
+      },
+    });
+    if (!kecamatan) {
+      throw new ApiError('Kecamatan not found', 404);
+    }
+  }
+
+  // Validate kelurahan if provided
+  if (rtData.kelurahanId) {
+    const kecamatanId = rtData.kecamatanId || existingRT.kecamatanId;
+    const kelurahan = await prisma.kelurahan.findFirst({
+      where: { 
+        id: rtData.kelurahanId,
+        kecamatanId: kecamatanId,
+        isActive: true
+      },
+    });
+    if (!kelurahan) {
+      throw new ApiError('Kelurahan not found or does not belong to the specified Kecamatan', 404);
+    }
+  }
+
   // Check if RT number already exists (if changing number)
   if (rtData.number && rtData.number !== existingRT.number) {
     const duplicateRT = await prisma.rT.findUnique({
@@ -328,6 +421,8 @@ export const updateRT = async (rtId: number, rtData: UpdateRTData, userContext: 
       ...(rtData.phoneNumber !== undefined && { phoneNumber: rtData.phoneNumber }),
       ...(rtData.email !== undefined && { email: rtData.email }),
       ...(rtData.isActive !== undefined && { isActive: rtData.isActive }),
+      ...(rtData.kecamatanId !== undefined && { kecamatanId: rtData.kecamatanId }),
+      ...(rtData.kelurahanId !== undefined && { kelurahanId: rtData.kelurahanId }),
     },
     include: {
       _count: {

@@ -23,7 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'react-toastify';
 import { FiSearch, FiUserPlus, FiFilter, FiDownload, FiUpload, FiCheck, FiX, FiHome, FiEdit3, FiPlus, FiInfo } from 'react-icons/fi';
-import { residentApi, rtApi, rwApi } from '@/lib/api';
+import { residentApi, rtApi, rwApi, daerahApi } from '@/lib/api';
 import ResidentForm from '@/components/residents/ResidentForm';
 import { Resident } from '@/lib/types/resident';
 
@@ -904,6 +904,660 @@ const RTForm = ({ rt, onSubmit, onCancel, isLoading = false }: {
   );
 };
 
+// Types for Kecamatan and Kelurahan
+type Kecamatan = {
+  id: number;
+  kode: string;
+  nama: string;
+  isActive: boolean;
+  kelurahans?: Kelurahan[];
+  createdAt?: string;
+};
+
+type Kelurahan = {
+  id: number;
+  kode: string;
+  nama: string;
+  kecamatanId: number;
+  kecamatan?: {
+    id: number;
+    nama: string;
+    kode: string;
+  };
+  isActive: boolean;
+  createdAt?: string;
+};
+
+// Area Management component
+const AreaManagement = ({ onClose }: { onClose: () => void }) => {
+  const [activeView, setActiveView] = useState<'main' | 'kecamatan' | 'kelurahan' | 'kecamatan-form' | 'kelurahan-form'>('main');
+  const [kecamatanList, setKecamatanList] = useState<Kecamatan[]>([]);
+  const [kelurahanList, setKelurahanList] = useState<Kelurahan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(false);
+  const [editingKecamatan, setEditingKecamatan] = useState<Kecamatan | null>(null);
+  const [editingKelurahan, setEditingKelurahan] = useState<Kelurahan | null>(null);
+  const [selectedKecamatan, setSelectedKecamatan] = useState<Kecamatan | null>(null);
+
+  // Fetch kecamatan list
+  const fetchKecamatanList = async () => {
+    setIsLoading(true);
+    try {
+      const result = await daerahApi.getAllKecamatan();
+      setKecamatanList(result.kecamatans || []);
+    } catch (error) {
+      console.error('Error fetching kecamatan list:', error);
+      toast.error('Gagal memuat daftar kecamatan');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch kelurahan list
+  const fetchKelurahanList = async (kecamatanId?: number) => {
+    setIsLoading(true);
+    try {
+      let result;
+      if (kecamatanId) {
+        result = await daerahApi.getKelurahanByKecamatan(kecamatanId);
+      } else {
+        result = await daerahApi.getAllKelurahan();
+      }
+      setKelurahanList(result.kelurahans || []);
+    } catch (error) {
+      console.error('Error fetching kelurahan list:', error);
+      toast.error('Gagal memuat daftar kelurahan');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === 'kecamatan') {
+      fetchKecamatanList();
+    } else if (activeView === 'kelurahan') {
+      fetchKelurahanList();
+    }
+  }, [activeView]);
+
+  // Handle kecamatan form submit
+  const handleKecamatanSubmit = async (data: { kode: string; nama: string }) => {
+    setIsFormLoading(true);
+    try {
+      if (editingKecamatan) {
+        await daerahApi.updateKecamatan(editingKecamatan.id, data);
+        toast.success('Kecamatan berhasil diperbarui');
+      } else {
+        await daerahApi.createKecamatan(data);
+        toast.success('Kecamatan berhasil ditambahkan');
+      }
+      setActiveView('kecamatan');
+      setEditingKecamatan(null);
+      await fetchKecamatanList();
+    } catch (error: any) {
+      console.error('Error saving kecamatan:', error);
+      const errorMsg = error.response?.data?.message || 'Gagal menyimpan kecamatan';
+      toast.error(errorMsg);
+    } finally {
+      setIsFormLoading(false);
+    }
+  };
+
+  // Handle kelurahan form submit
+  const handleKelurahanSubmit = async (data: { kode: string; nama: string; kecamatanId: number }) => {
+    setIsFormLoading(true);
+    try {
+      if (editingKelurahan) {
+        await daerahApi.updateKelurahan(editingKelurahan.id, data);
+        toast.success('Kelurahan berhasil diperbarui');
+      } else {
+        await daerahApi.createKelurahan(data);
+        toast.success('Kelurahan berhasil ditambahkan');
+      }
+      setActiveView('kelurahan');
+      setEditingKelurahan(null);
+      await fetchKelurahanList();
+    } catch (error: any) {
+      console.error('Error saving kelurahan:', error);
+      const errorMsg = error.response?.data?.message || 'Gagal menyimpan kelurahan';
+      toast.error(errorMsg);
+    } finally {
+      setIsFormLoading(false);
+    }
+  };
+
+  // Handle delete kecamatan
+  const handleDeleteKecamatan = async (kecamatan: Kecamatan) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus Kecamatan ${kecamatan.nama}?`)) {
+      try {
+        await daerahApi.deleteKecamatan(kecamatan.id);
+        toast.success('Kecamatan berhasil dihapus');
+        await fetchKecamatanList();
+      } catch (error: any) {
+        console.error('Error deleting kecamatan:', error);
+        const errorMsg = error.response?.data?.message || 'Gagal menghapus kecamatan';
+        toast.error(errorMsg);
+      }
+    }
+  };
+
+  // Handle delete kelurahan
+  const handleDeleteKelurahan = async (kelurahan: Kelurahan) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus Kelurahan ${kelurahan.nama}?`)) {
+      try {
+        await daerahApi.deleteKelurahan(kelurahan.id);
+        toast.success('Kelurahan berhasil dihapus');
+        await fetchKelurahanList();
+      } catch (error: any) {
+        console.error('Error deleting kelurahan:', error);
+        const errorMsg = error.response?.data?.message || 'Gagal menghapus kelurahan';
+        toast.error(errorMsg);
+      }
+    }
+  };
+
+  // Main view
+  if (activeView === 'main') {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h3 className="text-xl font-semibold mb-2">Pengelolaan Daerah</h3>
+          <p className="text-gray-600 mb-6">Kelola data kecamatan dan kelurahan untuk sistem Smart RW</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FiHome className="h-8 w-8 text-blue-600" />
+                </div>
+                <h4 className="text-lg font-semibold">Kecamatan</h4>
+                <p className="text-sm text-gray-600">Kelola data kecamatan dengan kode unik</p>
+                <p className="text-xs text-gray-500 mt-1">Contoh: A1, B1, C1</p>
+              </div>
+              <Button 
+                onClick={() => setActiveView('kecamatan')}
+                className="w-full"
+              >
+                Kelola Kecamatan
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FiHome className="h-8 w-8 text-green-600" />
+                </div>
+                <h4 className="text-lg font-semibold">Kelurahan</h4>
+                <p className="text-sm text-gray-600">Kelola data kelurahan dengan kode unik</p>
+                <p className="text-xs text-gray-500 mt-1">Contoh: AA1, BB1, CC1</p>
+              </div>
+              <Button 
+                onClick={() => setActiveView('kelurahan')}
+                className="w-full"
+                variant="secondary"
+              >
+                Kelola Kelurahan
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Tutup
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  // Kecamatan list view
+  if (activeView === 'kecamatan') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setActiveView('main')}>
+              ← Kembali
+            </Button>
+            <h3 className="text-lg font-semibold">Daftar Kecamatan</h3>
+          </div>
+          <Button onClick={() => {
+            setEditingKecamatan(null);
+            setActiveView('kecamatan-form');
+          }}>
+            <FiPlus className="mr-2 h-4 w-4" />
+            Tambah Kecamatan
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : kecamatanList.length > 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kode</TableHead>
+                  <TableHead>Nama Kecamatan</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Jumlah Kelurahan</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {kecamatanList.map(kecamatan => (
+                  <TableRow key={kecamatan.id}>
+                    <TableCell className="font-medium">{kecamatan.kode}</TableCell>
+                    <TableCell>{kecamatan.nama}</TableCell>
+                    <TableCell>
+                      {kecamatan.isActive ? (
+                        <Badge variant="default" className="bg-green-100 text-green-800">Aktif</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-100 text-red-800">Tidak Aktif</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{kecamatan.kelurahans?.length || 0} kelurahan</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setEditingKecamatan(kecamatan);
+                        setActiveView('kecamatan-form');
+                      }}>
+                        <FiEdit3 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteKecamatan(kecamatan)}
+                      >
+                        <FiX className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-center p-8 text-gray-500">
+            <FiHome className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+            <p className="mb-2">Belum ada kecamatan yang terdaftar</p>
+            <p className="text-sm mb-4">Mulai dengan menambahkan kecamatan pertama</p>
+            <Button onClick={() => {
+              setEditingKecamatan(null);
+              setActiveView('kecamatan-form');
+            }}>
+              <FiPlus className="mr-2 h-4 w-4" />
+              Tambah Kecamatan
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Kelurahan list view
+  if (activeView === 'kelurahan') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setActiveView('main')}>
+              ← Kembali
+            </Button>
+            <h3 className="text-lg font-semibold">Daftar Kelurahan</h3>
+          </div>
+          <Button onClick={() => {
+            setEditingKelurahan(null);
+            setActiveView('kelurahan-form');
+          }}>
+            <FiPlus className="mr-2 h-4 w-4" />
+            Tambah Kelurahan
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : kelurahanList.length > 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kode</TableHead>
+                  <TableHead>Nama Kelurahan</TableHead>
+                  <TableHead>Kecamatan</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {kelurahanList.map(kelurahan => (
+                  <TableRow key={kelurahan.id}>
+                    <TableCell className="font-medium">{kelurahan.kode}</TableCell>
+                    <TableCell>{kelurahan.nama}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{kelurahan.kecamatan?.kode} - {kelurahan.kecamatan?.nama}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {kelurahan.isActive ? (
+                        <Badge variant="default" className="bg-green-100 text-green-800">Aktif</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-100 text-red-800">Tidak Aktif</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setEditingKelurahan(kelurahan);
+                        setActiveView('kelurahan-form');
+                      }}>
+                        <FiEdit3 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteKelurahan(kelurahan)}
+                      >
+                        <FiX className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-center p-8 text-gray-500">
+            <FiHome className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+            <p className="mb-2">Belum ada kelurahan yang terdaftar</p>
+            <p className="text-sm mb-4">Mulai dengan menambahkan kelurahan pertama</p>
+            <Button onClick={() => {
+              setEditingKelurahan(null);
+              setActiveView('kelurahan-form');
+            }}>
+              <FiPlus className="mr-2 h-4 w-4" />
+              Tambah Kelurahan
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Kecamatan form view
+  if (activeView === 'kecamatan-form') {
+    return (
+      <KecamatanForm
+        kecamatan={editingKecamatan}
+        onSubmit={handleKecamatanSubmit}
+        onCancel={() => setActiveView('kecamatan')}
+        isLoading={isFormLoading}
+      />
+    );
+  }
+
+  // Kelurahan form view
+  if (activeView === 'kelurahan-form') {
+    return (
+      <KelurahanForm
+        kelurahan={editingKelurahan}
+        kecamatanList={kecamatanList}
+        onSubmit={handleKelurahanSubmit}
+        onCancel={() => setActiveView('kelurahan')}
+        isLoading={isFormLoading}
+        onLoadKecamatan={fetchKecamatanList}
+      />
+    );
+  }
+
+  return null;
+};
+
+// Kecamatan Form component
+const KecamatanForm = ({ kecamatan, onSubmit, onCancel, isLoading }: {
+  kecamatan?: Kecamatan | null;
+  onSubmit: (data: { kode: string; nama: string }) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+}) => {
+  const [formData, setFormData] = useState({
+    kode: kecamatan?.kode || '',
+    nama: kecamatan?.nama || '',
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.kode.trim()) {
+      newErrors.kode = 'Kode kecamatan wajib diisi';
+    } else if (!/^[A-Z][0-9]+$/.test(formData.kode)) {
+      newErrors.kode = 'Format kode: huruf besar diikuti angka (contoh: A1)';
+    }
+    
+    if (!formData.nama.trim()) {
+      newErrors.nama = 'Nama kecamatan wajib diisi';
+    } else if (formData.nama.trim().length < 3) {
+      newErrors.nama = 'Nama kecamatan minimal 3 karakter';
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length === 0) {
+      onSubmit({
+        kode: formData.kode.trim().toUpperCase(),
+        nama: formData.nama.trim(),
+      });
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          ← Kembali
+        </Button>
+        <h3 className="text-lg font-semibold">
+          {kecamatan ? 'Edit Kecamatan' : 'Tambah Kecamatan'}
+        </h3>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Kode Kecamatan *"
+          placeholder="A1"
+          value={formData.kode}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('kode', e.target.value)}
+          error={errors.kode}
+          maxLength={10}
+        />
+        
+        <Input
+          label="Nama Kecamatan *"
+          placeholder="Bekasi Barat"
+          value={formData.nama}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('nama', e.target.value)}
+          error={errors.nama}
+        />
+        
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-blue-900 mb-2">📝 Format Kode Kecamatan</h4>
+          <div className="text-sm text-blue-800 space-y-1">
+            <p>• Dimulai dengan huruf besar (A, B, C, dll)</p>
+            <p>• Diikuti dengan angka (1, 2, 3, dll)</p>
+            <p>• Contoh: A1, B1, C2, D10</p>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+            Batal
+          </Button>
+          <Button type="submit" isLoading={isLoading}>
+            {kecamatan ? 'Update Kecamatan' : 'Tambah Kecamatan'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </div>
+  );
+};
+
+// Kelurahan Form component
+const KelurahanForm = ({ kelurahan, kecamatanList, onSubmit, onCancel, isLoading, onLoadKecamatan }: {
+  kelurahan?: Kelurahan | null;
+  kecamatanList: Kecamatan[];
+  onSubmit: (data: { kode: string; nama: string; kecamatanId: number }) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+  onLoadKecamatan: () => void;
+}) => {
+  const [formData, setFormData] = useState({
+    kode: kelurahan?.kode || '',
+    nama: kelurahan?.nama || '',
+    kecamatanId: kelurahan?.kecamatanId || 0,
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (kecamatanList.length === 0) {
+      onLoadKecamatan();
+    }
+  }, [kecamatanList, onLoadKecamatan]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.kode.trim()) {
+      newErrors.kode = 'Kode kelurahan wajib diisi';
+    } else if (!/^[A-Z]{2}[0-9]+$/.test(formData.kode)) {
+      newErrors.kode = 'Format kode: 2 huruf besar diikuti angka (contoh: AA1)';
+    }
+    
+    if (!formData.nama.trim()) {
+      newErrors.nama = 'Nama kelurahan wajib diisi';
+    } else if (formData.nama.trim().length < 3) {
+      newErrors.nama = 'Nama kelurahan minimal 3 karakter';
+    }
+    
+    if (!formData.kecamatanId || formData.kecamatanId === 0) {
+      newErrors.kecamatanId = 'Kecamatan harus dipilih';
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length === 0) {
+      onSubmit({
+        kode: formData.kode.trim().toUpperCase(),
+        nama: formData.nama.trim(),
+        kecamatanId: formData.kecamatanId,
+      });
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          ← Kembali
+        </Button>
+        <h3 className="text-lg font-semibold">
+          {kelurahan ? 'Edit Kelurahan' : 'Tambah Kelurahan'}
+        </h3>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Kecamatan *
+          </label>
+          <Select 
+            value={formData.kecamatanId.toString()} 
+            onValueChange={(value) => handleInputChange('kecamatanId', parseInt(value))}
+          >
+            <SelectTrigger className={`w-full ${
+              errors.kecamatanId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+            }`}>
+              <SelectValue placeholder="Pilih Kecamatan" />
+            </SelectTrigger>
+            <SelectContent>
+              {kecamatanList.map(kecamatan => (
+                <SelectItem key={kecamatan.id} value={kecamatan.id.toString()}>
+                  {kecamatan.kode} - {kecamatan.nama}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.kecamatanId && <p className="mt-1 text-sm text-red-600">{errors.kecamatanId}</p>}
+        </div>
+        
+        <Input
+          label="Kode Kelurahan *"
+          placeholder="AA1"
+          value={formData.kode}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('kode', e.target.value)}
+          error={errors.kode}
+          maxLength={10}
+        />
+        
+        <Input
+          label="Nama Kelurahan *"
+          placeholder="Margahayu"
+          value={formData.nama}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('nama', e.target.value)}
+          error={errors.nama}
+        />
+        
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-green-900 mb-2">📝 Format Kode Kelurahan</h4>
+          <div className="text-sm text-green-800 space-y-1">
+            <p>• Dimulai dengan 2 huruf besar (AA, BB, CC, dll)</p>
+            <p>• Diikuti dengan angka (1, 2, 3, dll)</p>
+            <p>• Contoh: AA1, BB1, CC2, DD10</p>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+            Batal
+          </Button>
+          <Button type="submit" isLoading={isLoading}>
+            {kelurahan ? 'Update Kelurahan' : 'Tambah Kelurahan'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </div>
+  );
+};
+
 export default function WargaManagementPage() {
   const { user } = useAuth();
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -999,6 +1653,9 @@ export default function WargaManagementPage() {
   
   // Management modal state (for both RW and RT management)
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
+  
+  // Area Management modal state
+  const [isAreaManagementModalOpen, setIsAreaManagementModalOpen] = useState(false);
   
   // Detail modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -1406,6 +2063,24 @@ export default function WargaManagementPage() {
         <h1 className="text-2xl font-bold tracking-tight">Manajemen Data Warga</h1>
         
         <div className="flex space-x-2">
+          {/* Area Management - Only for ADMIN role */}
+          {user?.role === 'ADMIN' && (
+            <Dialog open={isAreaManagementModalOpen} onOpenChange={setIsAreaManagementModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" onClick={() => setIsAreaManagementModalOpen(true)}>
+                  <FiHome className="mr-2 h-4 w-4" />
+                  Pengelolaan Daerah
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Pengelolaan Daerah</DialogTitle>
+                </DialogHeader>
+                <AreaManagement onClose={() => setIsAreaManagementModalOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          )}
+
 {/* RW Management - Only for ADMIN role */}
           {user?.role === 'ADMIN' && (
             <Dialog open={isManagementModalOpen} onOpenChange={setIsManagementModalOpen}>

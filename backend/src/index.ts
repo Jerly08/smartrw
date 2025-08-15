@@ -18,6 +18,7 @@ import forumRoutes from './routes/forum.routes';
 import notificationRoutes from './routes/notification.routes';
 import rtRoutes from './routes/rt.routes';
 import rwRoutes from './routes/rw.routes';
+import daerahRoutes from './routes/daerah.routes';
 
 // Middleware
 import { errorHandler, notFound } from './middleware/error.middleware';
@@ -64,6 +65,7 @@ app.use('/api/forum', forumRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/rt', rtRoutes);
 app.use('/api/rw', rwRoutes);
+app.use('/api/daerah', daerahRoutes);
 
 // Error handling middleware
 app.use(notFound);

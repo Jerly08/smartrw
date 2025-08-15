@@ -1178,6 +1178,72 @@ export const rwApi = {
   },
 };
 
+// Daerah (Kecamatan & Kelurahan) API functions
+export const daerahApi = {
+  // Kecamatan functions
+  getAllKecamatan: async () => {
+    const response = await api.get('/daerah/kecamatan');
+    return response.data.data;
+  },
+
+  createKecamatan: async (data: {
+    kode: string;
+    nama: string;
+  }) => {
+    const response = await api.post('/daerah/kecamatan', data);
+    return response.data.data;
+  },
+
+  updateKecamatan: async (id: number, data: {
+    kode?: string;
+    nama?: string;
+    isActive?: boolean;
+  }) => {
+    const response = await api.put(`/daerah/kecamatan/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteKecamatan: async (id: number) => {
+    const response = await api.delete(`/daerah/kecamatan/${id}`);
+    return response.data;
+  },
+
+  // Kelurahan functions
+  getAllKelurahan: async () => {
+    const response = await api.get('/daerah/kelurahan');
+    return response.data.data;
+  },
+
+  getKelurahanByKecamatan: async (kecamatanId: number) => {
+    const response = await api.get(`/daerah/kelurahan/kecamatan/${kecamatanId}`);
+    return response.data.data;
+  },
+
+  createKelurahan: async (data: {
+    kode: string;
+    nama: string;
+    kecamatanId: number;
+  }) => {
+    const response = await api.post('/daerah/kelurahan', data);
+    return response.data.data;
+  },
+
+  updateKelurahan: async (id: number, data: {
+    kode?: string;
+    nama?: string;
+    kecamatanId?: number;
+    isActive?: boolean;
+  }) => {
+    const response = await api.put(`/daerah/kelurahan/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteKelurahan: async (id: number) => {
+    const response = await api.delete(`/daerah/kelurahan/${id}`);
+    return response.data;
+  },
+};
+
 // Export the axios instance for direct use
 export { api };
 
