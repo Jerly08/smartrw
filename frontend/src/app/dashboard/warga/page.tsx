@@ -560,12 +560,31 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
     name: rw?.name || '',
     email: rw?.email || '',
     rwNumber: rw?.number || '',
-    phoneNumber: rw?.phoneNumber || '',
-    address: rw?.address || '',
+    kelurahanId: rw?.kelurahanId || 0,
     isActive: rw?.isActive ?? true,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [kelurahanList, setKelurahanList] = useState<Kelurahan[]>([]);
+  const [isLoadingKelurahan, setIsLoadingKelurahan] = useState(false);
+
+  // Fetch kelurahan list on component mount
+  useEffect(() => {
+    fetchKelurahanList();
+  }, []);
+
+  const fetchKelurahanList = async () => {
+    setIsLoadingKelurahan(true);
+    try {
+      const result = await daerahApi.getAllKelurahan();
+      setKelurahanList(result.kelurahans || []);
+    } catch (error) {
+      console.error('Error fetching kelurahan list:', error);
+      toast.error('Gagal memuat daftar kelurahan');
+    } finally {
+      setIsLoadingKelurahan(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -574,7 +593,9 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
     
     // Name validation - required
     if (!formData.name.trim()) {
-      newErrors.name = 'Nama RW wajib diisi';
+      newErrors.name = 'Nama Ketua RW wajib diisi';
+    } else if (formData.name.trim().length < 3) {
+      newErrors.name = 'Nama Ketua RW minimal 3 karakter';
     }
     
     // Email validation - required
@@ -584,14 +605,16 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
       newErrors.email = 'Format email tidak valid';
     }
     
-    // RW Number validation - required
+    // RW Number validation - required, max 2 digits
     if (!formData.rwNumber.trim()) {
       newErrors.rwNumber = 'Nomor RW wajib diisi';
+    } else if (!/^[0-9]{1,2}$/.test(formData.rwNumber)) {
+      newErrors.rwNumber = 'Nomor RW harus 1-2 digit angka (contoh: 1, 01, 12)';
     }
     
-    // Phone number validation - optional
-    if (formData.phoneNumber.trim() && !/^(\+62|62|0)8[1-9][0-9]{6,9}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Format nomor telepon tidak valid (contoh: 08123456789)';
+    // Kelurahan validation - required
+    if (!formData.kelurahanId || formData.kelurahanId === 0) {
+      newErrors.kelurahanId = 'Kelurahan harus dipilih';
     }
     
     setErrors(newErrors);
@@ -600,9 +623,8 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
       const cleanData = {
         name: formData.name.trim(),
         email: formData.email.trim(),
-        rwNumber: formData.rwNumber.trim(),
-        phoneNumber: formData.phoneNumber.trim() || undefined,
-        address: formData.address.trim() || undefined,
+        rwNumber: formData.rwNumber.trim().padStart(2, '0'), // Ensure 2 digits with leading zero
+        kelurahanId: formData.kelurahanId,
         isActive: formData.isActive
       };
       
@@ -610,7 +632,7 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
     }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string | boolean | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -620,8 +642,8 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
-        label="Nama RW *"
-        placeholder="Nama Lengkap RW"
+        label="Nama Ketua RW *"
+        placeholder="Nama Lengkap Ketua RW"
         value={formData.name}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('name', e.target.value)}
         error={errors.name}
@@ -638,27 +660,43 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
       
       <Input
         label="Nomor RW *"
-        placeholder="001"
+        placeholder="01"
         value={formData.rwNumber}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('rwNumber', e.target.value)}
         error={errors.rwNumber}
+        maxLength={2}
       />
       
-      <Input
-        label="Nomor Telepon"
-        placeholder="08123456789"
-        value={formData.phoneNumber}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('phoneNumber', e.target.value)}
-        error={errors.phoneNumber}
-      />
-      
-      <Input
-        label="Alamat"
-        placeholder="Alamat RW"
-        value={formData.address}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('address', e.target.value)}
-        error={errors.address}
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Kelurahan *
+        </label>
+        <Select 
+          value={formData.kelurahanId.toString()} 
+          onValueChange={(value) => handleInputChange('kelurahanId', parseInt(value))}
+        >
+          <SelectTrigger className={`w-full ${
+            errors.kelurahanId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+          }`}>
+            <SelectValue placeholder={isLoadingKelurahan ? "Loading..." : "Pilih Kelurahan"} />
+          </SelectTrigger>
+          <SelectContent>
+            {isLoadingKelurahan ? (
+              <SelectItem value="0" disabled>Loading kelurahan...</SelectItem>
+            ) : kelurahanList.length > 0 ? (
+              kelurahanList.map(kelurahan => (
+                <SelectItem key={kelurahan.id} value={kelurahan.id.toString()}>
+                  {kelurahan.kode} - {kelurahan.nama}
+                  {kelurahan.kecamatan && ` (${kelurahan.kecamatan.nama})`}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="0" disabled>Tidak ada kelurahan tersedia</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        {errors.kelurahanId && <p className="mt-1 text-sm text-red-600">{errors.kelurahanId}</p>}
+      </div>
       
       <div className="flex items-center space-x-2">
         <input
@@ -679,7 +717,7 @@ const RWForm = ({ rw, onSubmit, onCancel, isLoading = false }: {
           <h4 className="text-sm font-semibold text-blue-900 mb-2">📝 Informasi Login RW</h4>
           <div className="text-sm text-blue-800 space-y-1">
             <p><strong>Email:</strong> {formData.email || 'email@example.com'}</p>
-            <p><strong>Password:</strong> RW{formData.rwNumber || 'XXX'}@2024</p>
+            <p><strong>Password:</strong> RW{formData.rwNumber.padStart(2, '0') || 'XX'}@2024</p>
             <div className="mt-2 text-xs text-blue-700 bg-blue-100 p-2 rounded">
               ℹ️ <strong>Catatan:</strong> Setelah RW dibuat, akun login akan otomatis dibuat dengan kredensial di atas. 
               RW dapat login ke sistem menggunakan email dan password ini untuk mengakses dashboard khusus RW.
